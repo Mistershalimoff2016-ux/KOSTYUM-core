@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#070b0f">
+  <title>KOSTYUM CORE</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #070b0f;
+      --panel: rgba(18, 27, 34, 0.72);
+      --line: rgba(120, 220, 255, 0.16);
+      --cyan: #7ee8ff;
+      --green: #83ffc7;
+      --text: #f4f8fb;
+      --muted: #81909b;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(49, 149, 181, .18), transparent 38%),
+        radial-gradient(circle at 100% 50%, rgba(42, 255, 189, .06), transparent 35%),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+        "Segoe UI", sans-serif;
+      padding: env(safe-area-inset-top) 16px
+        calc(100px + env(safe-area-inset-bottom));
+    }
+
+    .app {
+      max-width: 520px;
+      margin: auto;
+    }
+
+    .top {
+      padding: 24px 4px 22px;
+    }
+
+    .system {
+      color: var(--green);
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 28px;
+      letter-spacing: 1px;
+      font-weight: 650;
+    }
+
+    .date {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .core {
+      height: 178px;
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background:
+        radial-gradient(circle, rgba(126,232,255,.14), transparent 34%),
+        linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ring {
+      width: 104px;
+      height: 104px;
+      border: 1px solid rgba(126,232,255,.45);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 0 35px rgba(126,232,255,.09),
+        inset 0 0 25px rgba(126,232,255,.05);
+    }
+
+    .ring::before {
+      content: "";
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 1px dashed rgba(131,255,199,.35);
+      animation: rotate 18s linear infinite;
+      position: absolute;
+    }
+
+    @keyframes rotate {
+      to { transform: rotate(360deg); }
+    }
+
+    .core-label {
+      text-align: center;
+      z-index: 2;
+    }
+
+    .core-label strong {
+      display: block;
+      font-size: 13px;
+      letter-spacing: 2px;
+    }
+
+    .core-label span {
+      display: block;
+      color: var(--green);
+      font-size: 9px;
+      margin-top: 5px;
+      letter-spacing: 1.5px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(18px);
+    }
+
+    .card-title {
+      font-size: 10px;
+      color: var(--cyan);
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+
+    .task:last-child {
+      border-bottom: 0;
+    }
+
+    .check {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      border: 1px solid rgba(126,232,255,.45);
+      flex-shrink: 0;
+    }
+
+    .task-main {
+      font-size: 15px;
+    }
+
+    .task-sub {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+    }
+
+    .metric {
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 15px;
+      padding: 13px 8px;
+      text-align: center;
+    }
+
+    .metric strong {
+      font-size: 19px;
+      font-weight: 500;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 9px;
+      margin-top: 5px;
+      letter-spacing: .8px;
+    }
+
+    .upcoming {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .upcoming-date {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .upcoming-text {
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .arrow {
+      color: var(--cyan);
+      font-size: 20px;
+    }
+
+    .ask {
+      position: fixed;
+      bottom: calc(70px + env(safe-area-inset-bottom));
+      left: 16px;
+      right: 16px;
+      max-width: 488px;
+      margin: auto;
+      background: rgba(14,22,28,.92);
+      border: 1px solid rgba(126,232,255,.25);
+      border-radius: 18px;
+      padding: 15px 17px;
+      color: #93a2ac;
+      font-size: 13px;
+      backdrop-filter: blur(22px);
+      box-shadow: 0 15px 40px rgba(0,0,0,.35);
+    }
+
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(58px + env(safe-area-inset-bottom));
+      background: rgba(5,9,12,.88);
+      border-top: 1px solid rgba(255,255,255,.06);
+      backdrop-filter: blur(25px);
+      display: flex;
+      justify-content: space-around;
+      padding-top: 13px;
+    }
+
+    nav div {
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: #65737d;
+    }
+
+    nav .active {
+      color: var(--cyan);
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+
+    <header class="top">
+      <div class="system">● SYSTEM ACTIVE</div>
+      <h1>KOSTYUM // CORE</h1>
+      <div class="date">21 сентября · воскресенье</div>
+    </header>
+
+    <section class="core">
+      <div class="ring">
+        <div class="core-label">
+          <strong>CORE</strong>
+          <span>ONLINE</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Сегодня</div>
+
+      <div class="task">
+        <div class="check"></div>
+        <div>
+          <div class="task-main">Система Сидни</div>
+          <div class="task-sub">Выполнено</div>
+        </div>
+      </div>
+
+      <div class="task">
+        <div class="check"></div>
+        <div>
+          <div class="task-main">Обучение AI</div>
+          <div class="task-sub">Выполнено</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Состояние</div>
+      <div class="metrics">
+        <div class="metric">
+          <strong>—</strong>
+          <span>ЭНЕРГИЯ</span>
+        </div>
+        <div class="metric">
+          <strong>—</strong>
+          <span>НАСТРОЙ</span>
+        </div>
+        <div class="metric">
+          <strong>—</strong>
+          <span>НАГРУЗКА</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card upcoming">
+      <div>
+        <div class="card-title">Ближайшее</div>
+        <div class="upcoming-date">22 сентября</div>
+        <div class="upcoming-text">Бокс · Обучение AI</div>
+      </div>
+      <div class="arrow">›</div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Неделя · 21–27 сентября</div>
+      <div class="metrics">
+        <div class="metric">
+          <strong>1/7</strong>
+          <span>ДНИ</span>
+        </div>
+        <div class="metric">
+          <strong>1</strong>
+          <span>ТРЕНИРОВКИ</span>
+        </div>
+        <div class="metric">
+          <strong>1</strong>
+          <span>AI</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="ask">⌁ &nbsp; Спросить KOSTYUM...</div>
+
+  <nav>
+    <div class="active">CORE</div>
+    <div>КАЛЕНДАРЬ</div>
+    <div>ПРОГРЕСС</div>
+    <div>ЕЩЁ</div>
+  </nav>
+</body>
+</html>
