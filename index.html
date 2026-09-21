@@ -1,361 +1,551 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#070b0f">
-  <title>KOSTYUM CORE</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#070b0f">
+<title>KSTM // CORE</title>
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<style>
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  -webkit-tap-highlight-color:transparent;
+}
 
-    :root {
-      --bg: #070b0f;
-      --panel: rgba(18, 27, 34, 0.72);
-      --line: rgba(120, 220, 255, 0.16);
-      --cyan: #7ee8ff;
-      --green: #83ffc7;
-      --text: #f4f8fb;
-      --muted: #81909b;
-    }
+:root{
+  --bg:#070b0f;
+  --panel:rgba(18,27,34,.76);
+  --line:rgba(126,232,255,.18);
+  --cyan:#7ee8ff;
+  --green:#83ffc7;
+  --text:#f4f8fb;
+  --muted:#81909b;
+}
 
-    body {
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at 50% -10%, rgba(49, 149, 181, .18), transparent 38%),
-        radial-gradient(circle at 100% 50%, rgba(42, 255, 189, .06), transparent 35%),
-        var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-        "Segoe UI", sans-serif;
-      padding: env(safe-area-inset-top) 16px
-        calc(100px + env(safe-area-inset-bottom));
-    }
+body{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 50% -10%,rgba(49,149,181,.18),transparent 38%),
+    radial-gradient(circle at 100% 55%,rgba(42,255,189,.06),transparent 35%),
+    var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
+  padding:env(safe-area-inset-top) 16px calc(115px + env(safe-area-inset-bottom));
+}
 
-    .app {
-      max-width: 520px;
-      margin: auto;
-    }
+.app{
+  max-width:520px;
+  margin:auto;
+}
 
-    .top {
-      padding: 24px 4px 22px;
-    }
+.top{
+  padding:24px 4px 22px;
+}
 
-    .system {
-      color: var(--green);
-      font-size: 10px;
-      letter-spacing: 2.5px;
-      margin-bottom: 8px;
-    }
+.system{
+  color:var(--green);
+  font-size:10px;
+  letter-spacing:2.5px;
+  margin-bottom:8px;
+}
 
-    h1 {
-      font-size: 28px;
-      letter-spacing: 1px;
-      font-weight: 650;
-    }
+h1{
+  font-size:28px;
+  letter-spacing:1px;
+  font-weight:650;
+}
 
-    .date {
-      margin-top: 7px;
-      color: var(--muted);
-      font-size: 14px;
-    }
+.date{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:14px;
+}
 
-    .core {
-      height: 178px;
-      margin-bottom: 14px;
-      border: 1px solid var(--line);
-      border-radius: 26px;
-      background:
-        radial-gradient(circle, rgba(126,232,255,.14), transparent 34%),
-        linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-      backdrop-filter: blur(20px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    }
+.core{
+  height:178px;
+  margin-bottom:14px;
+  border:1px solid var(--line);
+  border-radius:26px;
+  background:
+    radial-gradient(circle,rgba(126,232,255,.14),transparent 34%),
+    linear-gradient(145deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  backdrop-filter:blur(20px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
 
-    .ring {
-      width: 104px;
-      height: 104px;
-      border: 1px solid rgba(126,232,255,.45);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow:
-        0 0 35px rgba(126,232,255,.09),
-        inset 0 0 25px rgba(126,232,255,.05);
-    }
+.ring{
+  width:104px;
+  height:104px;
+  border:1px solid rgba(126,232,255,.5);
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:
+    0 0 35px rgba(126,232,255,.10),
+    inset 0 0 25px rgba(126,232,255,.05);
+}
 
-    .ring::before {
-      content: "";
-      width: 76px;
-      height: 76px;
-      border-radius: 50%;
-      border: 1px dashed rgba(131,255,199,.35);
-      animation: rotate 18s linear infinite;
-      position: absolute;
-    }
+.ring:before{
+  content:"";
+  position:absolute;
+  width:76px;
+  height:76px;
+  border-radius:50%;
+  border:1px dashed rgba(131,255,199,.4);
+  animation:rotate 18s linear infinite;
+}
 
-    @keyframes rotate {
-      to { transform: rotate(360deg); }
-    }
+@keyframes rotate{
+  to{transform:rotate(360deg)}
+}
 
-    .core-label {
-      text-align: center;
-      z-index: 2;
-    }
+.coreLabel{
+  text-align:center;
+  z-index:2;
+}
 
-    .core-label strong {
-      display: block;
-      font-size: 13px;
-      letter-spacing: 2px;
-    }
+.coreLabel strong{
+  display:block;
+  font-size:13px;
+  letter-spacing:2px;
+}
 
-    .core-label span {
-      display: block;
-      color: var(--green);
-      font-size: 9px;
-      margin-top: 5px;
-      letter-spacing: 1.5px;
-    }
+.coreLabel span{
+  display:block;
+  color:var(--green);
+  font-size:9px;
+  margin-top:5px;
+  letter-spacing:1.5px;
+}
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      padding: 18px;
-      margin-bottom: 12px;
-      backdrop-filter: blur(18px);
-    }
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:12px;
+  backdrop-filter:blur(18px);
+}
 
-    .card-title {
-      font-size: 10px;
-      color: var(--cyan);
-      letter-spacing: 1.8px;
-      text-transform: uppercase;
-      margin-bottom: 15px;
-    }
+.cardTitle{
+  font-size:10px;
+  color:var(--cyan);
+  letter-spacing:1.8px;
+  text-transform:uppercase;
+  margin-bottom:15px;
+}
 
-    .task {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 11px 0;
-      border-bottom: 1px solid rgba(255,255,255,.05);
-    }
+.task{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 0;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  cursor:pointer;
+  user-select:none;
+}
 
-    .task:last-child {
-      border-bottom: 0;
-    }
+.task:last-child{
+  border-bottom:0;
+}
 
-    .check {
-      width: 22px;
-      height: 22px;
-      border-radius: 7px;
-      border: 1px solid rgba(126,232,255,.45);
-      flex-shrink: 0;
-    }
+.check{
+  width:23px;
+  height:23px;
+  border-radius:7px;
+  border:1px solid rgba(126,232,255,.5);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.2s;
+}
 
-    .task-main {
-      font-size: 15px;
-    }
+.task.done .check{
+  border-color:var(--green);
+  background:rgba(131,255,199,.14);
+}
 
-    .task-sub {
-      color: var(--muted);
-      font-size: 11px;
-      margin-top: 3px;
-    }
+.task.done .check:after{
+  content:"✓";
+  color:var(--green);
+  font-size:15px;
+  font-weight:700;
+}
 
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 9px;
-    }
+.taskMain{
+  font-size:15px;
+}
 
-    .metric {
-      background: rgba(255,255,255,.025);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: 15px;
-      padding: 13px 8px;
-      text-align: center;
-    }
+.taskSub{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:3px;
+}
 
-    .metric strong {
-      font-size: 19px;
-      font-weight: 500;
-    }
+.task.done .taskMain{
+  color:#a9b5bc;
+}
 
-    .metric span {
-      display: block;
-      color: var(--muted);
-      font-size: 9px;
-      margin-top: 5px;
-      letter-spacing: .8px;
-    }
+.task.done .taskSub{
+  color:var(--green);
+}
 
-    .upcoming {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+}
 
-    .upcoming-date {
-      color: var(--muted);
-      font-size: 11px;
-    }
+.metric{
+  background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:15px;
+  padding:13px 6px;
+  text-align:center;
+}
 
-    .upcoming-text {
-      font-size: 14px;
-      margin-top: 5px;
-    }
+.metric strong{
+  font-size:19px;
+  font-weight:500;
+}
 
-    .arrow {
-      color: var(--cyan);
-      font-size: 20px;
-    }
+.metric span{
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  margin-top:5px;
+  letter-spacing:.7px;
+}
 
-    .ask {
-      position: fixed;
-      bottom: calc(70px + env(safe-area-inset-bottom));
-      left: 16px;
-      right: 16px;
-      max-width: 488px;
-      margin: auto;
-      background: rgba(14,22,28,.92);
-      border: 1px solid rgba(126,232,255,.25);
-      border-radius: 18px;
-      padding: 15px 17px;
-      color: #93a2ac;
-      font-size: 13px;
-      backdrop-filter: blur(22px);
-      box-shadow: 0 15px 40px rgba(0,0,0,.35);
-    }
+.upcoming{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
 
-    nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: calc(58px + env(safe-area-inset-bottom));
-      background: rgba(5,9,12,.88);
-      border-top: 1px solid rgba(255,255,255,.06);
-      backdrop-filter: blur(25px);
-      display: flex;
-      justify-content: space-around;
-      padding-top: 13px;
-    }
+.upcomingDate{
+  color:var(--muted);
+  font-size:11px;
+}
 
-    nav div {
-      font-size: 9px;
-      letter-spacing: 1px;
-      color: #65737d;
-    }
+.upcomingText{
+  font-size:14px;
+  margin-top:5px;
+}
 
-    nav .active {
-      color: var(--cyan);
-    }
-  </style>
+.arrow{
+  color:var(--cyan);
+  font-size:22px;
+}
+
+.ask{
+  position:fixed;
+  bottom:calc(70px + env(safe-area-inset-bottom));
+  left:16px;
+  right:16px;
+  max-width:488px;
+  margin:auto;
+  background:rgba(14,22,28,.95);
+  border:1px solid rgba(126,232,255,.27);
+  border-radius:18px;
+  padding:15px 17px;
+  color:#93a2ac;
+  font-size:13px;
+  backdrop-filter:blur(22px);
+  box-shadow:0 15px 40px rgba(0,0,0,.35);
+  z-index:10;
+}
+
+nav{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  height:calc(58px + env(safe-area-inset-bottom));
+  background:rgba(5,9,12,.92);
+  border-top:1px solid rgba(255,255,255,.06);
+  backdrop-filter:blur(25px);
+  display:flex;
+  justify-content:space-around;
+  padding-top:13px;
+  z-index:9;
+}
+
+nav div{
+  font-size:9px;
+  letter-spacing:1px;
+  color:#65737d;
+}
+
+nav .active{
+  color:var(--cyan);
+}
+
+.empty{
+  color:var(--muted);
+  font-size:13px;
+  padding:4px 0;
+}
+</style>
 </head>
 
 <body>
-  <main class="app">
 
-    <header class="top">
-      <div class="system">● SYSTEM ACTIVE</div>
-      <h1>KOSTYUM // CORE</h1>
-      <div class="date">21 сентября · воскресенье</div>
-    </header>
+<main class="app">
 
-    <section class="core">
-      <div class="ring">
-        <div class="core-label">
-          <strong>CORE</strong>
-          <span>ONLINE</span>
-        </div>
-      </div>
-    </section>
+<header class="top">
+  <div class="system">● SYSTEM ACTIVE</div>
+  <h1>KSTM // CORE</h1>
+  <div class="date" id="currentDate"></div>
+</header>
 
-    <section class="card">
-      <div class="card-title">Сегодня</div>
+<section class="core">
+  <div class="ring">
+    <div class="coreLabel">
+      <strong>CORE</strong>
+      <span>ONLINE</span>
+    </div>
+  </div>
+</section>
 
-      <div class="task">
-        <div class="check"></div>
-        <div>
-          <div class="task-main">Система Сидни</div>
-          <div class="task-sub">Выполнено</div>
-        </div>
-      </div>
+<section class="card">
+  <div class="cardTitle">Сегодня</div>
+  <div id="todayTasks"></div>
+</section>
 
-      <div class="task">
-        <div class="check"></div>
-        <div>
-          <div class="task-main">Обучение AI</div>
-          <div class="task-sub">Выполнено</div>
-        </div>
-      </div>
-    </section>
+<section class="card">
+  <div class="cardTitle">Состояние</div>
 
-    <section class="card">
-      <div class="card-title">Состояние</div>
-      <div class="metrics">
-        <div class="metric">
-          <strong>—</strong>
-          <span>ЭНЕРГИЯ</span>
-        </div>
-        <div class="metric">
-          <strong>—</strong>
-          <span>НАСТРОЙ</span>
-        </div>
-        <div class="metric">
-          <strong>—</strong>
-          <span>НАГРУЗКА</span>
-        </div>
-      </div>
-    </section>
+  <div class="metrics">
+    <div class="metric">
+      <strong>—</strong>
+      <span>ЭНЕРГИЯ</span>
+    </div>
 
-    <section class="card upcoming">
+    <div class="metric">
+      <strong>—</strong>
+      <span>НАСТРОЙ</span>
+    </div>
+
+    <div class="metric">
+      <strong>—</strong>
+      <span>НАГРУЗКА</span>
+    </div>
+  </div>
+</section>
+
+<section class="card upcoming">
+  <div>
+    <div class="cardTitle">Ближайшее</div>
+    <div class="upcomingDate" id="nextDate"></div>
+    <div class="upcomingText" id="nextTasks"></div>
+  </div>
+
+  <div class="arrow">›</div>
+</section>
+
+<section class="card">
+  <div class="cardTitle">Неделя · 21–27 сентября</div>
+
+  <div class="metrics">
+    <div class="metric">
+      <strong id="daysProgress">1/7</strong>
+      <span>ДНИ</span>
+    </div>
+
+    <div class="metric">
+      <strong id="trainingProgress">1</strong>
+      <span>ТРЕНИРОВКИ</span>
+    </div>
+
+    <div class="metric">
+      <strong id="aiProgress">1</strong>
+      <span>AI</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="ask">⌁ &nbsp; Спросить KSTM...</div>
+
+<nav>
+  <div class="active">CORE</div>
+  <div>КАЛЕНДАРЬ</div>
+  <div>ПРОГРЕСС</div>
+  <div>ЕЩЁ</div>
+</nav>
+
+<script>
+const schedule = {
+  "2026-09-21": [
+    { id:"sydney-21", name:"Система Сидни", type:"training", defaultDone:true },
+    { id:"ai-21", name:"Обучение AI", type:"ai", defaultDone:true }
+  ],
+
+  "2026-09-22": [
+    { id:"boxing-22", name:"Бокс", type:"training", defaultDone:false },
+    { id:"ai-22", name:"Обучение AI", type:"ai", defaultDone:false }
+  ],
+
+  "2026-09-23": [
+    { id:"fasting-23", name:"Голодание", type:"fasting", defaultDone:false }
+  ]
+};
+
+function localDateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+
+function formatDate(date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day:"numeric",
+    month:"long",
+    weekday:"long"
+  }).format(date);
+}
+
+function shortDate(key) {
+  const [y,m,d] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("ru-RU", {
+    day:"numeric",
+    month:"long"
+  }).format(new Date(y,m-1,d));
+}
+
+function storageKey(taskId) {
+  return "kstm-task-" + taskId;
+}
+
+function isDone(task) {
+  const saved = localStorage.getItem(storageKey(task.id));
+
+  if (saved === null) {
+    return task.defaultDone === true;
+  }
+
+  return saved === "true";
+}
+
+function setDone(task, value) {
+  localStorage.setItem(storageKey(task.id), String(value));
+}
+
+const today = new Date();
+const todayKey = localDateKey(today);
+
+document.getElementById("currentDate").textContent =
+  formatDate(today);
+
+function renderToday() {
+  const container = document.getElementById("todayTasks");
+  const tasks = schedule[todayKey] || [];
+
+  container.innerHTML = "";
+
+  if (!tasks.length) {
+    container.innerHTML =
+      '<div class="empty">На сегодня задач пока нет.</div>';
+    return;
+  }
+
+  tasks.forEach(task => {
+    const row = document.createElement("div");
+    row.className = "task" + (isDone(task) ? " done" : "");
+
+    row.innerHTML = `
+      <div class="check"></div>
       <div>
-        <div class="card-title">Ближайшее</div>
-        <div class="upcoming-date">22 сентября</div>
-        <div class="upcoming-text">Бокс · Обучение AI</div>
-      </div>
-      <div class="arrow">›</div>
-    </section>
-
-    <section class="card">
-      <div class="card-title">Неделя · 21–27 сентября</div>
-      <div class="metrics">
-        <div class="metric">
-          <strong>1/7</strong>
-          <span>ДНИ</span>
-        </div>
-        <div class="metric">
-          <strong>1</strong>
-          <span>ТРЕНИРОВКИ</span>
-        </div>
-        <div class="metric">
-          <strong>1</strong>
-          <span>AI</span>
+        <div class="taskMain">${task.name}</div>
+        <div class="taskSub">
+          ${isDone(task) ? "Выполнено" : "Запланировано"}
         </div>
       </div>
-    </section>
+    `;
 
-  </main>
+    row.addEventListener("click", () => {
+      setDone(task, !isDone(task));
+      renderToday();
+      updateProgress();
+    });
 
-  <div class="ask">⌁ &nbsp; Спросить KOSTYUM...</div>
+    container.appendChild(row);
+  });
+}
 
-  <nav>
-    <div class="active">CORE</div>
-    <div>КАЛЕНДАРЬ</div>
-    <div>ПРОГРЕСС</div>
-    <div>ЕЩЁ</div>
-  </nav>
+function renderUpcoming() {
+  const keys = Object.keys(schedule).sort();
+  const nextKey = keys.find(key => key > todayKey);
+
+  if (!nextKey) {
+    document.getElementById("nextDate").textContent =
+      "Нет запланированных дат";
+
+    document.getElementById("nextTasks").textContent =
+      "Добавим следующий план";
+    return;
+  }
+
+  document.getElementById("nextDate").textContent =
+    shortDate(nextKey);
+
+  document.getElementById("nextTasks").textContent =
+    schedule[nextKey].map(task => task.name).join(" · ");
+}
+
+function updateProgress() {
+  const weekKeys = [
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25",
+    "2026-09-26",
+    "2026-09-27"
+  ];
+
+  let activeDays = 0;
+  let trainings = 0;
+  let ai = 0;
+
+  weekKeys.forEach(key => {
+    const tasks = schedule[key] || [];
+    const completed = tasks.filter(isDone);
+
+    if (completed.length > 0) {
+      activeDays++;
+    }
+
+    completed.forEach(task => {
+      if (task.type === "training") trainings++;
+      if (task.type === "ai") ai++;
+    });
+  });
+
+  document.getElementById("daysProgress").textContent =
+    activeDays + "/7";
+
+  document.getElementById("trainingProgress").textContent =
+    trainings;
+
+  document.getElementById("aiProgress").textContent =
+    ai;
+}
+
+renderToday();
+renderUpcoming();
+updateProgress();
+</script>
+
 </body>
 </html>
