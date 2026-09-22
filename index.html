@@ -132,6 +132,18 @@ button{cursor:pointer}
 .nav button.active{color:var(--cyan)}
 .navIcon{display:block;font-size:23px;line-height:28px;letter-spacing:0}
 .notice{color:var(--muted);font-size:14px;line-height:1.5}
+.goalForm{display:grid;grid-template-columns:1fr 145px;gap:8px;margin-top:14px}
+.goalForm input{width:100%;border:1px solid var(--line);background:#091116;color:var(--text);border-radius:14px;padding:13px;min-width:0}
+.goalForm .goalName{grid-column:1/-1}
+.goalAdd{border:1px solid rgba(126,232,255,.35);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:14px;font-weight:800}
+.goal{display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid rgba(126,232,255,.09)}
+.goal:first-child{border-top:0}
+.goal.done .goalNameText{text-decoration:line-through;color:#687781}
+.goalText{min-width:0;flex:1}
+.goalNameText{font-size:16px;overflow-wrap:anywhere}
+.goalMeta{font-size:10px;letter-spacing:.08em;color:var(--muted);margin-top:4px;text-transform:uppercase}
+.goalSummary{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;margin-bottom:8px}
+.goalSummary b{color:var(--cyan);font-size:15px}
 .version{font-size:10px;color:#53616a;text-align:center;margin-top:20px;letter-spacing:.15em}
 @media(max-width:390px){
   .app{padding-left:14px;padding-right:14px}
@@ -212,7 +224,7 @@ button{cursor:pointer}
   </div>
 
   <section class="card">
-    <h2>Upcoming</h2>
+    <h2>Ближайшее</h2>
     <div class="upDate" id="nextDate"></div>
     <div id="nextTasks"></div>
   </section>
@@ -312,16 +324,33 @@ button{cursor:pointer}
 <main id="view-more" class="view">
 
   <section class="card">
+    <h2>Цели</h2>
+
+    <div class="goalSummary">
+      <span>Активные цели</span>
+      <b id="goalCount">0</b>
+    </div>
+
+    <div id="activeGoals"></div>
+
+    <div class="goalForm">
+      <input class="goalName" id="newGoalName" maxlength="100" placeholder="Новая цель">
+      <input id="newGoalDate" type="date" aria-label="Срок цели">
+      <button class="goalAdd" id="addGoal">ДОБАВИТЬ</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Завершённые цели</h2>
+    <div id="doneGoals"></div>
+  </section>
+
+  <section class="card">
     <h2>Ещё</h2>
-
     <div class="notice">
-      Следующие модули KSTM будут подключаться сюда.
-      Сейчас приоритет — единая база, календарь и корректный прогресс.
+      Следующие модули KSTM будут подключаться сюда после проверки целей.
     </div>
-
-    <div class="version">
-      KSTM 0.2-alpha · ASK 0.1
-    </div>
+    <div class="version">KSTM 0.3-alpha · GOALS 0.1 · ASK 0.1</div>
   </section>
 
 </main>
@@ -568,6 +597,10 @@ typeof obj.state!=="object" ||
 Array.isArray(obj.state)
 ){
 obj.state={};
+}
+
+if(!Array.isArray(obj.goals)){
+obj.goals=[];
 }
 
 return obj;
@@ -1487,6 +1520,109 @@ el.append(r);
 
 }
 
+function goalNode(goal){
+
+const row=document.createElement("div");
+row.className="goal"+(goal.done ? " done" : "");
+
+const check=document.createElement("button");
+check.className="check";
+check.textContent=goal.done ? "✓" : "";
+check.setAttribute("aria-label",goal.done ? "Вернуть цель в активные" : "Завершить цель");
+check.onclick=()=>{
+goal.done=!goal.done;
+goal.completedAt=goal.done ? new Date().toISOString() : null;
+save();
+renderGoals();
+};
+
+const text=document.createElement("div");
+text.className="goalText";
+
+const name=document.createElement("div");
+name.className="goalNameText";
+name.textContent=goal.name;
+text.append(name);
+
+const meta=document.createElement("div");
+meta.className="goalMeta";
+meta.textContent=goal.targetDate ? "СРОК · "+fmtDate(parseKey(goal.targetDate),{day:"numeric",month:"long",year:"numeric"}) : "БЕЗ СРОКА";
+text.append(meta);
+
+const del=document.createElement("button");
+del.className="delete";
+del.textContent="×";
+del.setAttribute("aria-label","Удалить цель");
+del.onclick=()=>{
+data.goals=data.goals.filter(x=>x.id!==goal.id);
+save();
+renderGoals();
+};
+
+row.append(check,text,del);
+return row;
+
+}
+
+function renderGoalList(el,goals){
+
+el.textContent="";
+
+if(!goals.length){
+const empty=document.createElement("div");
+empty.className="empty";
+empty.textContent="Нет целей";
+el.append(empty);
+return;
+}
+
+goals.forEach(goal=>el.append(goalNode(goal)));
+
+}
+
+function renderGoals(){
+
+const active=data.goals.filter(x=>!x.done);
+const done=data.goals.filter(x=>x.done);
+
+active.sort((a,b)=>(a.targetDate || "9999-12-31").localeCompare(b.targetDate || "9999-12-31"));
+done.sort((a,b)=>String(b.completedAt || b.createdAt || "").localeCompare(String(a.completedAt || a.createdAt || "")));
+
+document.getElementById("goalCount").textContent=active.length;
+renderGoalList(document.getElementById("activeGoals"),active);
+renderGoalList(document.getElementById("doneGoals"),done);
+
+}
+
+function addGoal(){
+
+const input=document.getElementById("newGoalName");
+const dateInput=document.getElementById("newGoalDate");
+const name=input.value.trim();
+
+if(!name)return;
+
+data.goals.push({
+id:uid(),
+name,
+targetDate:dateInput.value || null,
+done:false,
+createdAt:new Date().toISOString(),
+completedAt:null
+});
+
+input.value="";
+dateInput.value="";
+save();
+renderGoals();
+
+}
+
+document.getElementById("addGoal").onclick=addGoal;
+document.getElementById("newGoalName").addEventListener("keydown",e=>{
+if(e.key==="Enter")addGoal();
+});
+
 function renderAll(){
 
 renderCore();
@@ -1494,6 +1630,8 @@ renderCore();
 renderCalendar();
 
 renderProgress();
+
+renderGoals();
 
 }
 
