@@ -309,6 +309,88 @@ CORE
 const STORE = "kstm-data-v2";
 const OLD_PREFIX = "kstm-task-";
 
+const HISTORY_MIGRATION_VERSION = 1;
+
+const historySeed = [
+
+{id:"history-yoga-13",date:"2026-09-13",name:"Йога",type:"training",done:true},
+{id:"history-ai-13",date:"2026-09-13",name:"AI / ChatGPT",type:"ai",done:true},
+{id:"history-highlights-13",date:"2026-09-13",name:"Instagram Highlights — Бокс",type:"general",done:true},
+
+{id:"history-sydney-14",date:"2026-09-14",name:"Система Сидни",type:"training",done:true},
+{id:"history-retro-14",date:"2026-09-14",name:"Instagram — ретро-история",type:"general",done:true},
+
+{id:"history-sydney-15",date:"2026-09-15",name:"Система Сидни",type:"training",done:true},
+{id:"history-chatgpt-15",date:"2026-09-15",name:"ChatGPT — работа с проектами",type:"ai",done:true},
+
+{id:"history-chatgpt-16",date:"2026-09-16",name:"ChatGPT — работа с проектами",type:"ai",done:true},
+{id:"history-yoga-16",date:"2026-09-16",name:"Йога",type:"training",done:true},
+
+{id:"history-boxing-17",date:"2026-09-17",name:"Бокс",type:"training",done:false},
+{id:"history-chatgpt-17",date:"2026-09-17",name:"ChatGPT",type:"ai",done:false},
+
+{id:"history-chatgpt-18",date:"2026-09-18",name:"ChatGPT",type:"ai",done:false},
+{id:"history-fasting-18",date:"2026-09-18",name:"Голодание",type:"fasting",done:true},
+
+{id:"history-boxing-19",date:"2026-09-19",name:"Бокс",type:"training",done:true},
+{id:"history-chatgpt-19",date:"2026-09-19",name:"Обучение ChatGPT",type:"ai",done:true},
+{id:"history-fasting-19",date:"2026-09-19",name:"Голодание",type:"fasting",done:true},
+
+{id:"history-sauna-20",date:"2026-09-20",name:"Баня",type:"general",done:true},
+{id:"history-sydney-20",date:"2026-09-20",name:"Система Сидни",type:"training",done:true},
+{id:"history-ai-20",date:"2026-09-20",name:"Обучение AI",type:"ai",done:true}
+
+];
+
+function sameHistoryEvent(a,b){
+
+return (
+a.date===b.date &&
+a.type===b.type &&
+String(a.name).trim().toLowerCase()===
+String(b.name).trim().toLowerCase()
+);
+
+}
+
+function applyHistoryMigration(data){
+
+if(
+(data.historyMigrationVersion || 0) >=
+HISTORY_MIGRATION_VERSION
+){
+return data;
+}
+
+historySeed.forEach(item=>{
+
+if(
+!data.events.some(
+e=>sameHistoryEvent(e,item)
+)
+){
+
+data.events.push({
+...item,
+createdAt:new Date().toISOString()
+});
+
+}
+
+});
+
+data.historyMigrationVersion =
+HISTORY_MIGRATION_VERSION;
+
+localStorage.setItem(
+STORE,
+JSON.stringify(data)
+);
+
+return data;
+
+}
+
 const seed = [
 
 {
@@ -418,7 +500,7 @@ if(
 saved &&
 Array.isArray(saved.events)
 ){
-return saved;
+return applyHistoryMigration(saved);
 }
 
 }catch(e){}
@@ -460,7 +542,7 @@ STORE,
 JSON.stringify(data)
 );
 
-return data;
+return applyHistoryMigration(data);
 
 }
 
