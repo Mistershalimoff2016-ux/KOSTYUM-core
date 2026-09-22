@@ -144,6 +144,27 @@ button{cursor:pointer}
 .goalMeta{font-size:10px;letter-spacing:.08em;color:var(--muted);margin-top:4px;text-transform:uppercase}
 .goalSummary{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;margin-bottom:8px}
 .goalSummary b{color:var(--cyan);font-size:15px}
+
+.habitForm{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:14px}
+.habitForm input{min-width:0;width:100%;border:1px solid var(--line);background:#091116;color:var(--text);border-radius:14px;padding:13px}
+.habitAdd{border:1px solid rgba(126,232,255,.35);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:14px;font-weight:800;padding:0 16px}
+.habit{padding:16px 0;border-top:1px solid rgba(126,232,255,.09)}
+.habit:first-child{border-top:0}
+.habitTop{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.habitTitle{min-width:0;flex:1}
+.habitName{font-size:16px;font-weight:750;overflow-wrap:anywhere}
+.habitStats{font-size:10px;letter-spacing:.08em;color:var(--muted);margin-top:4px;text-transform:uppercase}
+.habitDelete{border:0;background:transparent;color:#687781;font-size:20px;padding:0 2px 0 8px}
+.habitWeek{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.habitDay{text-align:center;min-width:0}
+.habitDayLabel{font-size:9px;font-weight:800;color:#687781;margin-bottom:6px}
+.habitDot{width:30px;height:30px;max-width:100%;border-radius:50%;border:1px solid rgba(126,232,255,.38);background:transparent;color:#7f8d96;font-size:10px;font-weight:850;padding:0}
+.habitDot.done{background:var(--green);border-color:var(--green);color:#061015}
+.habitDot.today{box-shadow:0 0 0 2px rgba(126,232,255,.16);border-color:var(--cyan)}
+.habitDot.future{opacity:.25;cursor:default}
+.habitEmpty{color:var(--muted);font-size:14px;padding:4px 0}
+.habitSummary{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;margin-bottom:8px}
+.habitSummary b{color:var(--cyan);font-size:15px}
 .version{font-size:10px;color:#53616a;text-align:center;margin-top:20px;letter-spacing:.15em}
 @media(max-width:390px){
   .app{padding-left:14px;padding-right:14px}
@@ -346,11 +367,27 @@ button{cursor:pointer}
   </section>
 
   <section class="card">
+    <h2>Привычки</h2>
+
+    <div class="habitSummary">
+      <span>Ежедневные привычки</span>
+      <b id="habitCount">0</b>
+    </div>
+
+    <div id="habitList"></div>
+
+    <div class="habitForm">
+      <input id="newHabitName" maxlength="80" placeholder="Например: 2 литра воды">
+      <button class="habitAdd" id="addHabit">ДОБАВИТЬ</button>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Ещё</h2>
     <div class="notice">
-      Следующие модули KSTM будут подключаться сюда после проверки целей.
+      Привычки 0.1: ежедневная отметка по дням недели и текущая серия.
     </div>
-    <div class="version">KSTM 0.3-alpha · GOALS 0.1 · ASK 0.1</div>
+    <div class="version">KSTM 0.4-alpha · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
   </section>
 
 </main>
@@ -602,6 +639,16 @@ obj.state={};
 if(!Array.isArray(obj.goals)){
 obj.goals=[];
 }
+
+if(!Array.isArray(obj.habits)){
+obj.habits=[];
+}
+
+obj.habits.forEach(h=>{
+if(!h.checks || typeof h.checks!=="object" || Array.isArray(h.checks)){
+h.checks={};
+}
+});
 
 return obj;
 
@@ -1623,6 +1670,153 @@ document.getElementById("newGoalName").addEventListener("keydown",e=>{
 if(e.key==="Enter")addGoal();
 });
 
+function addDaysKey(key,days){
+const d=parseKey(key);
+d.setDate(d.getDate()+days);
+return localDateKey(d);
+}
+
+function startOfWeekKey(key=todayKey){
+const d=parseKey(key);
+const day=(d.getDay()+6)%7;
+d.setDate(d.getDate()-day);
+return localDateKey(d);
+}
+
+function currentWeekKeys(){
+const start=startOfWeekKey(todayKey);
+return Array.from({length:7},(_,i)=>addDaysKey(start,i));
+}
+
+function habitStreak(habit){
+let key=todayKey;
+if(!habit.checks[key])key=addDaysKey(key,-1);
+let streak=0;
+while(habit.checks[key]){
+streak++;
+key=addDaysKey(key,-1);
+if(streak>3660)break;
+}
+return streak;
+}
+
+function toggleHabit(habit,key){
+if(key>todayKey)return;
+if(habit.checks[key]){
+delete habit.checks[key];
+}else{
+habit.checks[key]=true;
+}
+save();
+renderHabits();
+}
+
+function habitNode(habit){
+const wrap=document.createElement("div");
+wrap.className="habit";
+
+const top=document.createElement("div");
+top.className="habitTop";
+
+const title=document.createElement("div");
+title.className="habitTitle";
+
+const name=document.createElement("div");
+name.className="habitName";
+name.textContent=habit.name;
+
+const keys=currentWeekKeys();
+const weekDone=keys.filter(k=>habit.checks[k]).length;
+const streak=habitStreak(habit);
+
+const stats=document.createElement("div");
+stats.className="habitStats";
+stats.textContent=`НЕДЕЛЯ ${weekDone}/7 · СЕРИЯ ${streak}`;
+
+title.append(name,stats);
+
+const del=document.createElement("button");
+del.className="habitDelete";
+del.textContent="×";
+del.setAttribute("aria-label","Удалить привычку");
+del.onclick=()=>{
+if(!confirm(`Удалить привычку «${habit.name}»?`))return;
+data.habits=data.habits.filter(x=>x.id!==habit.id);
+save();
+renderHabits();
+};
+
+top.append(title,del);
+wrap.append(top);
+
+const week=document.createElement("div");
+week.className="habitWeek";
+const labels=["ПН","ВТ","СР","ЧТ","ПТ","СБ","ВС"];
+
+keys.forEach((key,i)=>{
+const cell=document.createElement("div");
+cell.className="habitDay";
+
+const label=document.createElement("div");
+label.className="habitDayLabel";
+label.textContent=labels[i];
+
+const dot=document.createElement("button");
+dot.className="habitDot";
+if(habit.checks[key])dot.classList.add("done");
+if(key===todayKey)dot.classList.add("today");
+if(key>todayKey)dot.classList.add("future");
+dot.textContent=habit.checks[key] ? "✓" : String(parseKey(key).getDate());
+dot.disabled=key>todayKey;
+dot.setAttribute("aria-label",`${habit.name}: ${fmtDate(parseKey(key))}`);
+dot.onclick=()=>toggleHabit(habit,key);
+
+cell.append(label,dot);
+week.append(cell);
+});
+
+wrap.append(week);
+return wrap;
+}
+
+function renderHabits(){
+const list=document.getElementById("habitList");
+list.textContent="";
+document.getElementById("habitCount").textContent=data.habits.length;
+
+if(!data.habits.length){
+const empty=document.createElement("div");
+empty.className="habitEmpty";
+empty.textContent="Нет привычек";
+list.append(empty);
+return;
+}
+
+data.habits.forEach(h=>list.append(habitNode(h)));
+}
+
+function addHabit(){
+const input=document.getElementById("newHabitName");
+const name=input.value.trim();
+if(!name)return;
+
+data.habits.push({
+id:uid(),
+name,
+checks:{},
+createdAt:new Date().toISOString()
+});
+
+input.value="";
+save();
+renderHabits();
+}
+
+document.getElementById("addHabit").onclick=addHabit;
+document.getElementById("newHabitName").addEventListener("keydown",e=>{
+if(e.key==="Enter")addHabit();
+});
+
 function renderAll(){
 
 renderCore();
@@ -1632,6 +1826,8 @@ renderCalendar();
 renderProgress();
 
 renderGoals();
+
+renderHabits();
 
 }
 
