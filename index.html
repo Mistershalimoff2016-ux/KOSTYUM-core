@@ -45,6 +45,14 @@ button{cursor:pointer}
 }
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .metric{font-size:15px;line-height:1.8}.metric span{float:right;color:#dce7ed}
+.energyHead{display:flex;align-items:center;justify-content:space-between;font-size:15px;margin-bottom:10px}
+.energyValue{color:var(--cyan);font-weight:800}
+.energyScale{display:flex;justify-content:space-between;gap:4px;margin-bottom:10px}
+.energyBtn{
+  width:22px;height:22px;border-radius:50%;border:1px solid rgba(126,232,255,.35);
+  background:transparent;color:#82919b;font-size:10px;font-weight:800;padding:0
+}
+.energyBtn.active{background:var(--cyan);border-color:var(--cyan);color:#061015}
 .big{font-size:38px;font-weight:850}.small{color:var(--muted);font-size:12px;font-weight:700}
 .task{
   display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid rgba(126,232,255,.09)
@@ -147,7 +155,17 @@ button{cursor:pointer}
   <div class="grid2">
     <section class="card">
       <h2>State</h2>
-      <div class="metric">Energy <span>—</span></div>
+      <div class="energyHead">
+        <span>Energy</span>
+        <span class="energyValue" id="energyValue">—</span>
+      </div>
+      <div class="energyScale" id="energyScale">
+        <button class="energyBtn" data-energy="1">1</button>
+        <button class="energyBtn" data-energy="2">2</button>
+        <button class="energyBtn" data-energy="3">3</button>
+        <button class="energyBtn" data-energy="4">4</button>
+        <button class="energyBtn" data-energy="5">5</button>
+      </div>
       <div class="metric">Mood <span>—</span></div>
       <div class="metric">Load <span>—</span></div>
     </section>
@@ -487,6 +505,20 @@ typeof window.crypto.randomUUID === "function"
 
 }
 
+function ensureStateData(obj){
+
+if(
+!obj.state ||
+typeof obj.state!=="object" ||
+Array.isArray(obj.state)
+){
+obj.state={};
+}
+
+return obj;
+
+}
+
 function loadData(){
 
 try{
@@ -500,7 +532,7 @@ if(
 saved &&
 Array.isArray(saved.events)
 ){
-return applyHistoryMigration(saved);
+return ensureStateData(applyHistoryMigration(saved));
 }
 
 }catch(e){}
@@ -542,7 +574,7 @@ STORE,
 JSON.stringify(data)
 );
 
-return applyHistoryMigration(data);
+return ensureStateData(applyHistoryMigration(data));
 
 }
 
@@ -556,6 +588,52 @@ JSON.stringify(data)
 );
 
 }
+
+function setEnergy(value){
+
+const current=
+data.state[todayKey] || {};
+
+data.state[todayKey]={
+...current,
+energy:value,
+updatedAt:new Date().toISOString()
+};
+
+save();
+renderEnergy();
+
+}
+
+function renderEnergy(){
+
+const value=
+data.state[todayKey]?.energy ?? null;
+
+document.getElementById(
+"energyValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".energyBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.energy)===value
+);
+});
+
+}
+
+document.querySelectorAll(
+".energyBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setEnergy(
+Number(btn.dataset.energy)
+);
+});
 
 function eventsOn(key){
 
@@ -786,6 +864,7 @@ document.getElementById(
 
 }
 
+renderEnergy();
 renderWeek();
 
 }
