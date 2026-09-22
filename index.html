@@ -48,11 +48,11 @@ button{cursor:pointer}
 .energyHead{display:flex;align-items:center;justify-content:space-between;font-size:15px;margin-bottom:10px}
 .energyValue{color:var(--cyan);font-weight:800}
 .energyScale{display:flex;justify-content:space-between;gap:4px;margin-bottom:10px}
-.energyBtn,.moodBtn,.loadBtn{
+.energyBtn,.moodBtn,.focusBtn{
   width:22px;height:22px;border-radius:50%;border:1px solid rgba(126,232,255,.35);
   background:transparent;color:#82919b;font-size:10px;font-weight:800;padding:0
 }
-.energyBtn.active,.moodBtn.active,.loadBtn.active{background:var(--cyan);border-color:var(--cyan);color:#061015}
+.energyBtn.active,.moodBtn.active,.focusBtn.active{background:var(--cyan);border-color:var(--cyan);color:#061015}
 .big{font-size:38px;font-weight:850}.small{color:var(--muted);font-size:12px;font-weight:700}
 .task{
   display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid rgba(126,232,255,.09)
@@ -105,10 +105,24 @@ button{cursor:pointer}
 }
 .ask{
   position:fixed;left:50%;transform:translateX(-50%);bottom:82px;
-  width:min(calc(100% - 36px),724px);padding:16px 20px;border:1px solid var(--line);
+  width:min(calc(100% - 36px),724px);padding:0;border:1px solid var(--line);
   background:rgba(8,15,20,.94);backdrop-filter:blur(14px);
-  border-radius:22px;color:#84939e;font-size:14px;font-weight:750;z-index:10
+  border-radius:22px;z-index:10;overflow:hidden
 }
+.askOpen{width:100%;padding:16px 20px;border:0;background:transparent;color:#9aa8b1;font-size:14px;font-weight:800;text-align:left}
+.askPanel{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:30;display:none;align-items:flex-end;justify-content:center;padding:18px}
+.askPanel.open{display:flex}
+.askSheet{width:min(100%,724px);background:#0b141a;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 20px 70px rgba(0,0,0,.45);margin-bottom:env(safe-area-inset-bottom)}
+.askHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.askTitle{font-size:15px;font-weight:900;letter-spacing:.13em;color:var(--cyan)}
+.askClose{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#091116;color:var(--text);font-size:22px}
+.askReply{min-height:74px;border:1px solid rgba(126,232,255,.14);background:#081015;border-radius:16px;padding:14px;color:#cbd6dc;font-size:14px;line-height:1.45;white-space:pre-line}
+.askQuick{display:flex;gap:7px;overflow:auto;padding:10px 0}
+.askQuick button{white-space:nowrap;border:1px solid var(--line);background:#091116;color:#9eabb3;border-radius:999px;padding:9px 12px;font-weight:750}
+.askForm{display:grid;grid-template-columns:1fr auto;gap:8px}
+.askInput{min-width:0;border:1px solid var(--line);background:#071015;color:var(--text);border-radius:14px;padding:13px;font-size:16px}
+.askSend{border:1px solid rgba(126,232,255,.35);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:14px;padding:0 16px;font-weight:900}
+.askHint{margin-top:9px;color:#61717b;font-size:11px;line-height:1.4}
 .nav{
   position:fixed;bottom:0;left:0;right:0;height:74px;padding-bottom:env(safe-area-inset-bottom);
   background:rgba(5,10,13,.96);border-top:1px solid var(--line);
@@ -154,9 +168,9 @@ button{cursor:pointer}
 
   <div class="grid2">
     <section class="card">
-      <h2>State</h2>
+      <h2>Состояние</h2>
       <div class="energyHead">
-        <span>Energy</span>
+        <span>Энергия</span>
         <span class="energyValue" id="energyValue">—</span>
       </div>
       <div class="energyScale" id="energyScale">
@@ -167,7 +181,7 @@ button{cursor:pointer}
         <button class="energyBtn" data-energy="5">5</button>
       </div>
       <div class="energyHead">
-        <span>Mood</span>
+        <span>Настроение</span>
         <span class="energyValue" id="moodValue">—</span>
       </div>
       <div class="energyScale" id="moodScale">
@@ -178,15 +192,15 @@ button{cursor:pointer}
         <button class="moodBtn" data-mood="5">5</button>
       </div>
       <div class="energyHead">
-        <span>Load</span>
-        <span class="energyValue" id="loadValue">—</span>
+        <span>Фокус</span>
+        <span class="energyValue" id="focusValue">—</span>
       </div>
-      <div class="energyScale" id="loadScale">
-        <button class="loadBtn" data-load="1">1</button>
-        <button class="loadBtn" data-load="2">2</button>
-        <button class="loadBtn" data-load="3">3</button>
-        <button class="loadBtn" data-load="4">4</button>
-        <button class="loadBtn" data-load="5">5</button>
+      <div class="energyScale" id="focusScale">
+        <button class="focusBtn" data-focus="1">1</button>
+        <button class="focusBtn" data-focus="2">2</button>
+        <button class="focusBtn" data-focus="3">3</button>
+        <button class="focusBtn" data-focus="4">4</button>
+        <button class="focusBtn" data-focus="5">5</button>
       </div>
     </section>
 
@@ -306,7 +320,7 @@ button{cursor:pointer}
     </div>
 
     <div class="version">
-      KSTM 0.2-alpha
+      KSTM 0.2-alpha · ASK 0.1
     </div>
   </section>
 
@@ -315,7 +329,28 @@ button{cursor:pointer}
 </div>
 
 <div class="ask">
-ASK KSTM — следующий модуль
+  <button class="askOpen" id="askOpen">ASK KSTM — ОТКРЫТЬ</button>
+</div>
+
+<div class="askPanel" id="askPanel" aria-hidden="true">
+  <div class="askSheet">
+    <div class="askHead">
+      <div class="askTitle">ASK KSTM</div>
+      <button class="askClose" id="askClose" aria-label="Закрыть">×</button>
+    </div>
+    <div class="askReply" id="askReply">Готов. Я работаю с данными KSTM на этом устройстве.</div>
+    <div class="askQuick">
+      <button data-ask="сегодня">Сегодня</button>
+      <button data-ask="завтра">Завтра</button>
+      <button data-ask="состояние">Состояние</button>
+      <button data-ask="помощь">Команды</button>
+    </div>
+    <div class="askForm">
+      <input class="askInput" id="askInput" maxlength="120" placeholder="Например: добавь йогу завтра">
+      <button class="askSend" id="askSend">→</button>
+    </div>
+    <div class="askHint">Локальный модуль 0.1 — без внешнего AI и без передачи данных в интернет.</div>
+  </div>
 </div>
 
 <nav class="nav">
@@ -701,49 +736,49 @@ Number(btn.dataset.mood)
 );
 });
 
-function setLoad(value){
+function setFocus(value){
 
 const current=
 data.state[todayKey] || {};
 
 data.state[todayKey]={
 ...current,
-load:value,
+focus:value,
 updatedAt:new Date().toISOString()
 };
 
 save();
-renderLoad();
+renderFocus();
 
 }
 
-function renderLoad(){
+function renderFocus(){
 
 const value=
-data.state[todayKey]?.load ?? null;
+data.state[todayKey]?.focus ?? null;
 
 document.getElementById(
-"loadValue"
+"focusValue"
 ).textContent=
 value===null ? "—" : `${value}/5`;
 
 document.querySelectorAll(
-".loadBtn"
+".focusBtn"
 ).forEach(btn=>{
 btn.classList.toggle(
 "active",
-Number(btn.dataset.load)===value
+Number(btn.dataset.focus)===value
 );
 });
 
 }
 
 document.querySelectorAll(
-".loadBtn"
+".focusBtn"
 ).forEach(btn=>{
 btn.onclick=()=>
-setLoad(
-Number(btn.dataset.load)
+setFocus(
+Number(btn.dataset.focus)
 );
 });
 
@@ -978,7 +1013,7 @@ document.getElementById(
 
 renderEnergy();
 renderMood();
-renderLoad();
+renderFocus();
 renderWeek();
 
 }
@@ -1463,6 +1498,191 @@ renderProgress();
 }
 
 renderAll();
+
+
+function askDateKey(offsetDays){
+
+const d=new Date();
+d.setDate(d.getDate()+offsetDays);
+return localDateKey(d);
+
+}
+
+function askTaskType(name){
+
+const q=name.toLowerCase();
+
+if(/бокс|йог|трен|сидни|alpha|gravity/.test(q))return "training";
+if(/\bai\b|chatgpt|gpt|обучен/.test(q))return "ai";
+if(/голод|fast/.test(q))return "fasting";
+return "general";
+
+}
+
+function askListFor(key,label){
+
+const items=eventsOn(key);
+
+if(!items.length){
+return `${label}: записей нет.`;
+}
+
+const done=items.filter(x=>x.done).length;
+const lines=items.map(x=>`${x.done ? "✓" : "○"} ${x.name}`);
+
+return `${label}: ${done}/${items.length} выполнено\n${lines.join("\n")}`;
+
+}
+
+function askState(){
+
+const st=data.state[todayKey] || {};
+const value=x=>x==null ? "—" : `${x}/5`;
+
+return `Состояние сегодня\nЭнергия: ${value(st.energy)}\nНастроение: ${value(st.mood)}\nФокус: ${value(st.focus)}`;
+
+}
+
+function askAdd(name,key){
+
+const clean=name.trim().replace(/[.!]+$/g,"");
+
+if(!clean)return "Не вижу название задачи.";
+
+const type=askTaskType(clean);
+
+data.events.push({
+id:uid(),
+date:key,
+name:clean.charAt(0).toUpperCase()+clean.slice(1),
+type,
+done:false,
+createdAt:new Date().toISOString()
+});
+
+save();
+renderAll();
+
+return `Добавлено: ${clean}\n${fmtDate(parseKey(key))}.`;
+
+}
+
+function askParseDate(text){
+
+const q=text.toLowerCase();
+
+if(q.includes("послезавтра"))return askDateKey(2);
+if(q.includes("завтра"))return askDateKey(1);
+if(q.includes("сегодня"))return todayKey;
+
+const m=q.match(/(?:^|\s)(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{2,4}))?(?:\s|$)/);
+
+if(m){
+const now=new Date();
+let year=m[3] ? Number(m[3]) : now.getFullYear();
+if(year<100)year+=2000;
+const d=new Date(year,Number(m[2])-1,Number(m[1]));
+if(d.getFullYear()===year && d.getMonth()===Number(m[2])-1 && d.getDate()===Number(m[1])){
+return localDateKey(d);
+}
+}
+
+return null;
+
+}
+
+function askHandle(raw){
+
+const text=raw.trim();
+const q=text.toLowerCase();
+
+if(!text)return "Введите команду.";
+
+if(q==="сегодня" || /что.*сегодня/.test(q)){
+return askListFor(todayKey,"Сегодня");
+}
+
+if(q==="завтра" || /что.*завтра/.test(q)){
+return askListFor(askDateKey(1),"Завтра");
+}
+
+if(/состояни|state/.test(q)){
+return askState();
+}
+
+let m=q.match(/^(?:энергия|energy)\s*([1-5])$/);
+if(m){
+setEnergy(Number(m[1]));
+return `Энергия: ${m[1]}/5.`;
+}
+
+m=q.match(/^(?:настроение|mood)\s*([1-5])$/);
+if(m){
+setMood(Number(m[1]));
+return `Настроение: ${m[1]}/5.`;
+}
+
+m=q.match(/^(?:фокус|focus)\s*([1-5])$/);
+if(m){
+setFocus(Number(m[1]));
+return `Фокус: ${m[1]}/5.`;
+}
+
+if(/^(добавь|добавить)\b/.test(q)){
+const key=askParseDate(q) || todayKey;
+let name=text.replace(/^(добавь|добавить)\s+/i,"");
+name=name.replace(/\s+(сегодня|завтра|послезавтра)\s*$/i,"");
+name=name.replace(/\s+\d{1,2}[.\/-]\d{1,2}(?:[.\/-]\d{2,4})?\s*$/i,"");
+return askAdd(name,key);
+}
+
+if(/помощ|команд|что умеешь/.test(q)){
+return "Команды:\n• сегодня / завтра\n• состояние\n• энергия 1–5\n• настроение 1–5\n• фокус 1–5\n• добавь бокс завтра\n• добавь йогу 24.09";
+}
+
+return "Команда пока не распознана. Нажмите «Команды», чтобы увидеть доступные варианты.";
+
+}
+
+const askPanel=document.getElementById("askPanel");
+const askInput=document.getElementById("askInput");
+const askReply=document.getElementById("askReply");
+
+function openAsk(){
+askPanel.classList.add("open");
+askPanel.setAttribute("aria-hidden","false");
+setTimeout(()=>askInput.focus(),80);
+}
+
+function closeAsk(){
+askPanel.classList.remove("open");
+askPanel.setAttribute("aria-hidden","true");
+}
+
+document.getElementById("askOpen").onclick=openAsk;
+document.getElementById("askClose").onclick=closeAsk;
+
+askPanel.addEventListener("click",e=>{
+if(e.target===askPanel)closeAsk();
+});
+
+document.querySelectorAll("[data-ask]").forEach(btn=>{
+btn.onclick=()=>{
+askReply.textContent=askHandle(btn.dataset.ask);
+};
+});
+
+function submitAsk(){
+const value=askInput.value;
+askReply.textContent=askHandle(value);
+askInput.value="";
+}
+
+document.getElementById("askSend").onclick=submitAsk;
+
+askInput.addEventListener("keydown",e=>{
+if(e.key==="Enter")submitAsk();
+});
 
 document.querySelectorAll(
 ".nav button"
