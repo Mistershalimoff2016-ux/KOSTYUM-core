@@ -48,11 +48,11 @@ button{cursor:pointer}
 .energyHead{display:flex;align-items:center;justify-content:space-between;font-size:15px;margin-bottom:10px}
 .energyValue{color:var(--cyan);font-weight:800}
 .energyScale{display:flex;justify-content:space-between;gap:4px;margin-bottom:10px}
-.energyBtn{
+.energyBtn,.moodBtn,.loadBtn{
   width:22px;height:22px;border-radius:50%;border:1px solid rgba(126,232,255,.35);
   background:transparent;color:#82919b;font-size:10px;font-weight:800;padding:0
 }
-.energyBtn.active{background:var(--cyan);border-color:var(--cyan);color:#061015}
+.energyBtn.active,.moodBtn.active,.loadBtn.active{background:var(--cyan);border-color:var(--cyan);color:#061015}
 .big{font-size:38px;font-weight:850}.small{color:var(--muted);font-size:12px;font-weight:700}
 .task{
   display:flex;align-items:center;gap:12px;padding:13px 2px;border-top:1px solid rgba(126,232,255,.09)
@@ -166,8 +166,28 @@ button{cursor:pointer}
         <button class="energyBtn" data-energy="4">4</button>
         <button class="energyBtn" data-energy="5">5</button>
       </div>
-      <div class="metric">Mood <span>—</span></div>
-      <div class="metric">Load <span>—</span></div>
+      <div class="energyHead">
+        <span>Mood</span>
+        <span class="energyValue" id="moodValue">—</span>
+      </div>
+      <div class="energyScale" id="moodScale">
+        <button class="moodBtn" data-mood="1">1</button>
+        <button class="moodBtn" data-mood="2">2</button>
+        <button class="moodBtn" data-mood="3">3</button>
+        <button class="moodBtn" data-mood="4">4</button>
+        <button class="moodBtn" data-mood="5">5</button>
+      </div>
+      <div class="energyHead">
+        <span>Load</span>
+        <span class="energyValue" id="loadValue">—</span>
+      </div>
+      <div class="energyScale" id="loadScale">
+        <button class="loadBtn" data-load="1">1</button>
+        <button class="loadBtn" data-load="2">2</button>
+        <button class="loadBtn" data-load="3">3</button>
+        <button class="loadBtn" data-load="4">4</button>
+        <button class="loadBtn" data-load="5">5</button>
+      </div>
     </section>
 
     <section class="card">
@@ -635,6 +655,98 @@ Number(btn.dataset.energy)
 );
 });
 
+function setMood(value){
+
+const current=
+data.state[todayKey] || {};
+
+data.state[todayKey]={
+...current,
+mood:value,
+updatedAt:new Date().toISOString()
+};
+
+save();
+renderMood();
+
+}
+
+function renderMood(){
+
+const value=
+data.state[todayKey]?.mood ?? null;
+
+document.getElementById(
+"moodValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".moodBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.mood)===value
+);
+});
+
+}
+
+document.querySelectorAll(
+".moodBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setMood(
+Number(btn.dataset.mood)
+);
+});
+
+function setLoad(value){
+
+const current=
+data.state[todayKey] || {};
+
+data.state[todayKey]={
+...current,
+load:value,
+updatedAt:new Date().toISOString()
+};
+
+save();
+renderLoad();
+
+}
+
+function renderLoad(){
+
+const value=
+data.state[todayKey]?.load ?? null;
+
+document.getElementById(
+"loadValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".loadBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.load)===value
+);
+});
+
+}
+
+document.querySelectorAll(
+".loadBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setLoad(
+Number(btn.dataset.load)
+);
+});
+
 function eventsOn(key){
 
 return data.events.filter(
@@ -865,6 +977,8 @@ document.getElementById(
 }
 
 renderEnergy();
+renderMood();
+renderLoad();
 renderWeek();
 
 }
