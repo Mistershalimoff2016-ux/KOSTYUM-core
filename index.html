@@ -171,6 +171,31 @@ button{cursor:pointer}
   .card{padding:17px}
   .core{width:175px;height:175px}
 }
+
+.trainingSummary{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;font-weight:700;margin-bottom:12px}
+.trainingSummary b{color:var(--cyan);font-size:18px}
+.trainingForm{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.trainingForm select,.trainingForm input{width:100%;background:#091117;border:1px solid rgba(126,232,255,.25);color:var(--text);border-radius:14px;padding:12px;font:inherit;outline:none}
+.trainingForm .trainingAdd{grid-column:1/-1;border:1px solid rgba(126,232,255,.45);background:rgba(126,232,255,.10);color:var(--cyan);border-radius:14px;padding:12px;font-weight:900;font-size:14px}
+.trainingForm .trainingCustom{grid-column:1/-1;display:none}
+.trainingForm .trainingCustom.show{display:block}
+.taskName.trainingLink{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:0;font:inherit;cursor:pointer}
+.taskName.trainingLink::after{content:"  ›";color:var(--cyan);font-weight:900;text-decoration:none}
+.task.done .taskName.trainingLink::after{text-decoration:none}
+.trainingLogPanel{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:40;display:none;align-items:flex-end;justify-content:center;padding:18px}
+.trainingLogPanel.open{display:flex}
+.trainingLogSheet{width:min(100%,724px);background:#0b141a;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 20px 70px rgba(0,0,0,.45);margin-bottom:env(safe-area-inset-bottom)}
+.trainingLogHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.trainingLogTitle{font-size:19px;font-weight:900;color:var(--text)}
+.trainingLogDate{font-size:11px;letter-spacing:.1em;color:var(--cyan);margin-top:4px;text-transform:uppercase}
+.trainingLogClose{width:38px;height:38px;flex:0 0 38px;border-radius:12px;border:1px solid var(--line);background:#091116;color:var(--text);font-size:22px}
+.trainingLogLabel{display:block;color:#8d9ba4;font-size:12px;font-weight:800;letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
+.trainingLogText{width:100%;min-height:170px;resize:vertical;border:1px solid rgba(126,232,255,.22);background:#071015;color:var(--text);border-radius:16px;padding:14px;font:inherit;font-size:16px;line-height:1.45;outline:none}
+.trainingLogText:focus{border-color:rgba(126,232,255,.55)}
+.trainingLogActions{display:flex;justify-content:flex-end;margin-top:12px}
+.trainingLogSave{width:100%;border:1px solid rgba(126,232,255,.45);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:14px;padding:13px 16px;font-weight:900;font-size:14px}
+.trainingLogStatus{min-height:18px;margin-top:9px;color:var(--green);font-size:12px}
+
 </style>
 </head>
 
@@ -383,15 +408,56 @@ button{cursor:pointer}
   </section>
 
   <section class="card">
+    <h2>Тренировки</h2>
+
+    <div class="trainingSummary">
+      <span>На этой неделе</span>
+      <b id="trainingWeekCount">0</b>
+    </div>
+
+    <div id="trainingWeekList"></div>
+
+    <div class="trainingForm">
+      <select id="trainingKind" aria-label="Вид тренировки">
+        <option value="Бокс">Бокс</option>
+        <option value="Йога">Йога</option>
+        <option value="Alpha Gravity">Alpha Gravity</option>
+        <option value="Другое">Другое</option>
+      </select>
+      <input id="trainingDate" type="date" aria-label="Дата тренировки">
+      <input class="trainingCustom" id="trainingCustom" maxlength="80" placeholder="Название тренировки">
+      <button class="trainingAdd" id="addTraining">ДОБАВИТЬ ТРЕНИРОВКУ</button>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Ещё</h2>
     <div class="notice">
-      Привычки 0.1: ежедневная отметка по дням недели и текущая серия.
+      Тренировки 0.2: нажми на тренировку, чтобы открыть её журнал и записать, что было сделано. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.4-alpha · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
+    <div class="version">KSTM 0.5-alpha · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
   </section>
 
 </main>
 
+</div>
+
+<div class="trainingLogPanel" id="trainingLogPanel" aria-hidden="true">
+  <div class="trainingLogSheet" role="dialog" aria-modal="true" aria-labelledby="trainingLogTitle">
+    <div class="trainingLogHead">
+      <div>
+        <div class="trainingLogTitle" id="trainingLogTitle">Тренировка</div>
+        <div class="trainingLogDate" id="trainingLogDate"></div>
+      </div>
+      <button class="trainingLogClose" id="trainingLogClose" aria-label="Закрыть">×</button>
+    </div>
+    <label class="trainingLogLabel" for="trainingLogText">Что сделал на тренировке?</label>
+    <textarea class="trainingLogText" id="trainingLogText" maxlength="3000" placeholder="Например: разминка 10 мин, скакалка 3×3, лапы 5 раундов, мешок 4 раунда, спарринг 3 раунда..."></textarea>
+    <div class="trainingLogActions">
+      <button class="trainingLogSave" id="trainingLogSave">СОХРАНИТЬ ЗАПИСЬ</button>
+    </div>
+    <div class="trainingLogStatus" id="trainingLogStatus" aria-live="polite"></div>
+  </div>
 </div>
 
 <div class="ask">
@@ -936,11 +1002,20 @@ document.createElement("div");
 txt.className="taskText";
 
 const name=
-document.createElement("div");
+document.createElement(
+e.type==="training" ? "button" : "div"
+);
 
-name.className="taskName";
+name.className=
+"taskName"+(e.type==="training" ? " trainingLink" : "");
 
 name.textContent=e.name;
+
+if(e.type==="training"){
+name.type="button";
+name.setAttribute("aria-label",`Открыть журнал тренировки ${e.name}`);
+name.onclick=()=>openTrainingLog(e.id);
+}
 
 const tag=
 document.createElement("div");
@@ -948,7 +1023,9 @@ document.createElement("div");
 tag.className="tag";
 
 tag.textContent=
-typeLabel(e.type);
+e.type==="training" && e.trainingLog
+? `${typeLabel(e.type)} · запись сохранена`
+: typeLabel(e.type);
 
 txt.append(
 name,
@@ -1817,6 +1894,103 @@ document.getElementById("newHabitName").addEventListener("keydown",e=>{
 if(e.key==="Enter")addHabit();
 });
 
+let activeTrainingId=null;
+
+function formatTrainingDate(key){
+const [y,m,d]=key.split("-").map(Number);
+return new Intl.DateTimeFormat("ru-RU",{
+day:"numeric",
+month:"long",
+year:"numeric"
+}).format(new Date(y,m-1,d));
+}
+
+function openTrainingLog(id){
+const event=data.events.find(e=>e.id===id && e.type==="training");
+if(!event)return;
+
+activeTrainingId=id;
+document.getElementById("trainingLogTitle").textContent=event.name;
+document.getElementById("trainingLogDate").textContent=formatTrainingDate(event.date);
+document.getElementById("trainingLogText").value=event.trainingLog || "";
+document.getElementById("trainingLogStatus").textContent=event.trainingLog ? "Запись загружена" : "";
+
+const panel=document.getElementById("trainingLogPanel");
+panel.classList.add("open");
+panel.setAttribute("aria-hidden","false");
+setTimeout(()=>document.getElementById("trainingLogText").focus(),0);
+}
+
+function closeTrainingLog(){
+const panel=document.getElementById("trainingLogPanel");
+panel.classList.remove("open");
+panel.setAttribute("aria-hidden","true");
+activeTrainingId=null;
+}
+
+function saveTrainingLog(){
+if(!activeTrainingId)return;
+const event=data.events.find(e=>e.id===activeTrainingId && e.type==="training");
+if(!event)return;
+
+const text=document.getElementById("trainingLogText").value.trim();
+event.trainingLog=text;
+event.trainingLoggedAt=new Date().toISOString();
+save();
+document.getElementById("trainingLogStatus").textContent=text ? "Запись сохранена" : "Запись очищена";
+renderAll();
+}
+
+document.getElementById("trainingLogClose").onclick=closeTrainingLog;
+document.getElementById("trainingLogSave").onclick=saveTrainingLog;
+document.getElementById("trainingLogPanel").addEventListener("click",e=>{
+if(e.target.id==="trainingLogPanel")closeTrainingLog();
+});
+
+function renderTrainingModule(){
+const dateInput=document.getElementById("trainingDate");
+if(dateInput && !dateInput.value)dateInput.value=todayKey;
+
+const keys=currentWeekKeys();
+const sessions=data.events
+.filter(e=>e.type==="training" && keys.includes(e.date))
+.sort((a,b)=>a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+
+document.getElementById("trainingWeekCount").textContent=sessions.length;
+renderList(document.getElementById("trainingWeekList"),sessions,true);
+}
+
+function addTrainingSession(){
+const kind=document.getElementById("trainingKind").value;
+const custom=document.getElementById("trainingCustom");
+const date=document.getElementById("trainingDate").value || todayKey;
+const name=kind==="Другое" ? custom.value.trim() : kind;
+if(!name){custom.focus();return;}
+
+data.events.push({
+id:uid(),
+date,
+name,
+type:"training",
+done:false,
+createdAt:new Date().toISOString()
+});
+
+custom.value="";
+save();
+renderAll();
+}
+
+document.getElementById("trainingKind").addEventListener("change",e=>{
+const custom=document.getElementById("trainingCustom");
+custom.classList.toggle("show",e.target.value==="Другое");
+});
+
+document.getElementById("addTraining").onclick=addTrainingSession;
+document.getElementById("trainingCustom").addEventListener("keydown",e=>{
+if(e.key==="Enter")addTrainingSession();
+});
+
 function renderAll(){
 
 renderCore();
@@ -1828,6 +2002,8 @@ renderProgress();
 renderGoals();
 
 renderHabits();
+
+renderTrainingModule();
 
 }
 
