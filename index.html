@@ -179,22 +179,27 @@ button{cursor:pointer}
 .trainingForm .trainingAdd{grid-column:1/-1;border:1px solid rgba(126,232,255,.45);background:rgba(126,232,255,.10);color:var(--cyan);border-radius:14px;padding:12px;font-weight:900;font-size:14px}
 .trainingForm .trainingCustom{grid-column:1/-1;display:none}
 .trainingForm .trainingCustom.show{display:block}
-.taskName.trainingLink{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;padding:0;font:inherit;cursor:pointer}
-.taskName.trainingLink::after{content:"  ›";color:var(--cyan);font-weight:900;text-decoration:none}
-.task.done .taskName.trainingLink::after{text-decoration:none}
-.trainingLogPanel{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:40;display:none;align-items:flex-end;justify-content:center;padding:18px}
-.trainingLogPanel.open{display:flex}
-.trainingLogSheet{width:min(100%,724px);background:#0b141a;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 20px 70px rgba(0,0,0,.45);margin-bottom:env(safe-area-inset-bottom)}
-.trainingLogHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.trainingLogTitle{font-size:19px;font-weight:900;color:var(--text)}
-.trainingLogDate{font-size:11px;letter-spacing:.1em;color:var(--cyan);margin-top:4px;text-transform:uppercase}
-.trainingLogClose{width:38px;height:38px;flex:0 0 38px;border-radius:12px;border:1px solid var(--line);background:#091116;color:var(--text);font-size:22px}
-.trainingLogLabel{display:block;color:#8d9ba4;font-size:12px;font-weight:800;letter-spacing:.06em;margin-bottom:8px;text-transform:uppercase}
-.trainingLogText{width:100%;min-height:170px;resize:vertical;border:1px solid rgba(126,232,255,.22);background:#071015;color:var(--text);border-radius:16px;padding:14px;font:inherit;font-size:16px;line-height:1.45;outline:none}
-.trainingLogText:focus{border-color:rgba(126,232,255,.55)}
-.trainingLogActions{display:flex;justify-content:flex-end;margin-top:12px}
-.trainingLogSave{width:100%;border:1px solid rgba(126,232,255,.45);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:14px;padding:13px 16px;font-weight:900;font-size:14px}
-.trainingLogStatus{min-height:18px;margin-top:9px;color:var(--green);font-size:12px}
+
+
+.trainingTaskOpen{cursor:pointer}
+.trainingTaskOpen .taskName:after{content:"  ›";color:var(--cyan);font-weight:900}
+.trainingSheetPanel{position:fixed;inset:0;z-index:40;display:none;align-items:flex-end;background:rgba(0,0,0,.58);backdrop-filter:blur(8px)}
+.trainingSheetPanel.open{display:flex}
+.trainingSheet{width:min(760px,100%);max-height:86vh;overflow:auto;margin:0 auto;background:#0b1319;border:1px solid rgba(126,232,255,.28);border-radius:26px 26px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -18px 50px rgba(0,0,0,.45)}
+.trainingSheetHead{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+.trainingSheetTitle{min-width:0;flex:1}
+.trainingSheetTitle h3{margin:0;font-size:22px}
+.trainingSheetMeta{color:var(--muted);font-size:12px;margin-top:6px}
+.trainingSheetClose{border:0;background:transparent;color:#8c9aa3;font-size:28px;line-height:1;padding:0 4px}
+.trainingFieldLabel{display:block;color:#91a0ab;font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.trainingNotes{width:100%;min-height:190px;resize:vertical;background:#071015;border:1px solid rgba(126,232,255,.25);color:var(--text);border-radius:16px;padding:14px;font:inherit;line-height:1.45;outline:none}
+.trainingNotes:focus{border-color:rgba(126,232,255,.6)}
+.trainingSheetActions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.trainingSheetActions button{border-radius:14px;padding:13px;font:inherit;font-weight:850}
+.trainingSave{border:1px solid rgba(126,232,255,.5);background:rgba(126,232,255,.12);color:var(--cyan)}
+.trainingDone{border:1px solid rgba(131,255,199,.42);background:rgba(131,255,199,.09);color:var(--green)}
+.trainingSavedHint{min-height:18px;color:var(--green);font-size:11px;margin-top:9px}
+@media(max-width:390px){.trainingSheetActions{grid-template-columns:1fr}}
 
 </style>
 </head>
@@ -433,30 +438,32 @@ button{cursor:pointer}
   <section class="card">
     <h2>Ещё</h2>
     <div class="notice">
-      Тренировки 0.2: нажми на тренировку, чтобы открыть её журнал и записать, что было сделано. Привычки 0.1: недельная отметка и серия.
+      Тренировки 0.2: нажми на тренировку, чтобы открыть карточку и записать, что сделал. Данные сохраняются на устройстве. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.5-alpha · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
+    <div class="version">KSTM 0.6-alpha · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
   </section>
 
 </main>
 
 </div>
 
-<div class="trainingLogPanel" id="trainingLogPanel" aria-hidden="true">
-  <div class="trainingLogSheet" role="dialog" aria-modal="true" aria-labelledby="trainingLogTitle">
-    <div class="trainingLogHead">
-      <div>
-        <div class="trainingLogTitle" id="trainingLogTitle">Тренировка</div>
-        <div class="trainingLogDate" id="trainingLogDate"></div>
+
+<div class="trainingSheetPanel" id="trainingSheetPanel" aria-hidden="true">
+  <div class="trainingSheet" role="dialog" aria-modal="true" aria-labelledby="trainingSheetName">
+    <div class="trainingSheetHead">
+      <div class="trainingSheetTitle">
+        <h3 id="trainingSheetName">Тренировка</h3>
+        <div class="trainingSheetMeta" id="trainingSheetMeta"></div>
       </div>
-      <button class="trainingLogClose" id="trainingLogClose" aria-label="Закрыть">×</button>
+      <button class="trainingSheetClose" id="trainingSheetClose" aria-label="Закрыть">×</button>
     </div>
-    <label class="trainingLogLabel" for="trainingLogText">Что сделал на тренировке?</label>
-    <textarea class="trainingLogText" id="trainingLogText" maxlength="3000" placeholder="Например: разминка 10 мин, скакалка 3×3, лапы 5 раундов, мешок 4 раунда, спарринг 3 раунда..."></textarea>
-    <div class="trainingLogActions">
-      <button class="trainingLogSave" id="trainingLogSave">СОХРАНИТЬ ЗАПИСЬ</button>
+    <label class="trainingFieldLabel" for="trainingNotes">Что сделал на тренировке</label>
+    <textarea class="trainingNotes" id="trainingNotes" maxlength="3000" placeholder="Например: разминка, работа на лапах 4×3 мин, мешок 3×3 мин, лёгкий спарринг 3 раунда…"></textarea>
+    <div class="trainingSavedHint" id="trainingSavedHint"></div>
+    <div class="trainingSheetActions">
+      <button class="trainingSave" id="trainingSave">СОХРАНИТЬ ЗАПИСЬ</button>
+      <button class="trainingDone" id="trainingDone">ОТМЕТИТЬ ВЫПОЛНЕННОЙ</button>
     </div>
-    <div class="trainingLogStatus" id="trainingLogStatus" aria-live="polite"></div>
   </div>
 </div>
 
@@ -1002,20 +1009,11 @@ document.createElement("div");
 txt.className="taskText";
 
 const name=
-document.createElement(
-e.type==="training" ? "button" : "div"
-);
+document.createElement("div");
 
-name.className=
-"taskName"+(e.type==="training" ? " trainingLink" : "");
+name.className="taskName";
 
 name.textContent=e.name;
-
-if(e.type==="training"){
-name.type="button";
-name.setAttribute("aria-label",`Открыть журнал тренировки ${e.name}`);
-name.onclick=()=>openTrainingLog(e.id);
-}
 
 const tag=
 document.createElement("div");
@@ -1023,9 +1021,12 @@ document.createElement("div");
 tag.className="tag";
 
 tag.textContent=
-e.type==="training" && e.trainingLog
-? `${typeLabel(e.type)} · запись сохранена`
-: typeLabel(e.type);
+typeLabel(e.type) + (e.type==="training" && e.trainingNote ? " · запись есть" : "");
+
+if(e.type==="training"){
+txt.classList.add("trainingTaskOpen");
+txt.onclick=()=>openTrainingCard(e.id);
+}
 
 txt.append(
 name,
@@ -1894,58 +1895,68 @@ document.getElementById("newHabitName").addEventListener("keydown",e=>{
 if(e.key==="Enter")addHabit();
 });
 
-let activeTrainingId=null;
 
-function formatTrainingDate(key){
-const [y,m,d]=key.split("-").map(Number);
-return new Intl.DateTimeFormat("ru-RU",{
-day:"numeric",
-month:"long",
-year:"numeric"
-}).format(new Date(y,m-1,d));
+let openTrainingId=null;
+
+function trainingEventById(id){
+return data.events.find(e=>e.id===id && e.type==="training");
 }
 
-function openTrainingLog(id){
-const event=data.events.find(e=>e.id===id && e.type==="training");
-if(!event)return;
+function openTrainingCard(id){
+const e=trainingEventById(id);
+if(!e)return;
 
-activeTrainingId=id;
-document.getElementById("trainingLogTitle").textContent=event.name;
-document.getElementById("trainingLogDate").textContent=formatTrainingDate(event.date);
-document.getElementById("trainingLogText").value=event.trainingLog || "";
-document.getElementById("trainingLogStatus").textContent=event.trainingLog ? "Запись загружена" : "";
+openTrainingId=id;
+document.getElementById("trainingSheetName").textContent=e.name;
+document.getElementById("trainingSheetMeta").textContent=
+fmtDate(parseKey(e.date),{day:"numeric",month:"long",year:"numeric",weekday:"long"});
+document.getElementById("trainingNotes").value=e.trainingNote || "";
+document.getElementById("trainingSavedHint").textContent="";
+document.getElementById("trainingDone").textContent=
+e.done ? "ВЫПОЛНЕНО ✓" : "ОТМЕТИТЬ ВЫПОЛНЕННОЙ";
 
-const panel=document.getElementById("trainingLogPanel");
+const panel=document.getElementById("trainingSheetPanel");
 panel.classList.add("open");
 panel.setAttribute("aria-hidden","false");
-setTimeout(()=>document.getElementById("trainingLogText").focus(),0);
+setTimeout(()=>document.getElementById("trainingNotes").focus(),50);
 }
 
-function closeTrainingLog(){
-const panel=document.getElementById("trainingLogPanel");
+function closeTrainingCard(){
+openTrainingId=null;
+const panel=document.getElementById("trainingSheetPanel");
 panel.classList.remove("open");
 panel.setAttribute("aria-hidden","true");
-activeTrainingId=null;
 }
 
-function saveTrainingLog(){
-if(!activeTrainingId)return;
-const event=data.events.find(e=>e.id===activeTrainingId && e.type==="training");
-if(!event)return;
+function saveTrainingNote(){
+const e=trainingEventById(openTrainingId);
+if(!e)return;
 
-const text=document.getElementById("trainingLogText").value.trim();
-event.trainingLog=text;
-event.trainingLoggedAt=new Date().toISOString();
+e.trainingNote=document.getElementById("trainingNotes").value.trim();
+e.trainingNoteUpdatedAt=new Date().toISOString();
 save();
-document.getElementById("trainingLogStatus").textContent=text ? "Запись сохранена" : "Запись очищена";
+document.getElementById("trainingSavedHint").textContent="Запись сохранена";
 renderAll();
 }
 
-document.getElementById("trainingLogClose").onclick=closeTrainingLog;
-document.getElementById("trainingLogSave").onclick=saveTrainingLog;
-document.getElementById("trainingLogPanel").addEventListener("click",e=>{
-if(e.target.id==="trainingLogPanel")closeTrainingLog();
+function toggleTrainingDoneFromCard(){
+const e=trainingEventById(openTrainingId);
+if(!e)return;
+
+e.done=!e.done;
+save();
+document.getElementById("trainingDone").textContent=
+e.done ? "ВЫПОЛНЕНО ✓" : "ОТМЕТИТЬ ВЫПОЛНЕННОЙ";
+renderAll();
+}
+
+document.getElementById("trainingSheetClose").onclick=closeTrainingCard;
+document.getElementById("trainingSave").onclick=saveTrainingNote;
+document.getElementById("trainingDone").onclick=toggleTrainingDoneFromCard;
+document.getElementById("trainingSheetPanel").addEventListener("click",e=>{
+if(e.target.id==="trainingSheetPanel")closeTrainingCard();
 });
+
 
 function renderTrainingModule(){
 const dateInput=document.getElementById("trainingDate");
