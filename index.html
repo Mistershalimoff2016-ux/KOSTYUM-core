@@ -202,6 +202,13 @@ button{cursor:pointer}
 @media(max-width:390px){.trainingSheetActions{grid-template-columns:1fr}}
 
 .stateCard{grid-column:1/-1}.stateHeader{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}.stateHeader h2{margin:0}.stateScore{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--cyan) calc(var(--score,0)*1%),#172229 0);flex:0 0 68px}.stateScore:after{content:"";position:absolute;inset:6px;border-radius:50%;background:#0d171d}.stateScoreText{position:relative;z-index:1;text-align:center;font-size:17px;font-weight:900;color:var(--cyan)}.stateScoreText small{display:block;font-size:7px;color:var(--muted)}.statePeriods{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px}.statePeriod{border:1px solid var(--line);background:#091116;color:#87959e;border-radius:13px;padding:10px 5px;font-size:11px;font-weight:850}.statePeriod.active{border-color:var(--cyan);background:rgba(126,232,255,.1);color:var(--cyan)}.stateMetric{padding:11px 0;border-top:1px solid rgba(126,232,255,.09)}.stateMetric:first-child{border-top:0}.stateMetricHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.stateMetricName{font-size:14px;font-weight:750}.stateMetricValue{font-size:12px;color:var(--cyan);font-weight:850}.stateScale{display:flex;gap:8px}.stateScale button{width:30px;height:30px;border-radius:50%;border:1px solid rgba(126,232,255,.35);background:transparent;color:#82919b;font-size:11px;font-weight:850;padding:0}.stateScale button.active{background:var(--cyan);border-color:var(--cyan);color:#061015}.stateMetricDelete{border:0;background:transparent;color:#687781;font-size:18px;padding-left:8px}.stateAddToggle{width:100%;margin-top:10px;border:1px dashed rgba(126,232,255,.28);background:transparent;color:var(--cyan);border-radius:14px;padding:11px;font-weight:800}.stateAddForm{display:none;grid-template-columns:1fr 130px;gap:8px;margin-top:9px}.stateAddForm.open{display:grid}.stateAddForm input,.stateAddForm select{min-width:0;border:1px solid var(--line);background:#091116;color:var(--text);border-radius:13px;padding:11px}.stateAddForm button{grid-column:1/-1;border:1px solid rgba(126,232,255,.35);background:rgba(126,232,255,.1);color:var(--cyan);border-radius:13px;padding:11px;font-weight:850}
+
+.stateMetricValue{min-width:54px;text-align:right}
+.stateMetricAverage{margin-top:8px;color:#81909b;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.stateMetricAverage b{color:var(--cyan);font-size:12px;letter-spacing:0}
+.statePeriodSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:-7px 0 12px}
+.statePeriodSummary div{text-align:center;color:#65747e;font-size:9px;font-weight:800}
+.statePeriodSummary b{display:block;color:#aebbc3;font-size:11px;margin-top:3px}
 </style>
 </head>
 
@@ -242,6 +249,11 @@ button{cursor:pointer}
         <button class="statePeriod active" data-period="morning">УТРО</button>
         <button class="statePeriod" data-period="day">ДЕНЬ</button>
         <button class="statePeriod" data-period="evening">ВЕЧЕР</button>
+      </div>
+      <div class="statePeriodSummary" id="statePeriodSummary">
+        <div>УТРО<b id="stateMorningPercent">—</b></div>
+        <div>ДЕНЬ<b id="stateDayPeriodPercent">—</b></div>
+        <div>ВЕЧЕР<b id="stateEveningPercent">—</b></div>
       </div>
       <div id="stateMetrics"></div>
       <button class="stateAddToggle" id="stateAddToggle">+ ДОБАВИТЬ ПОКАЗАТЕЛЬ</button>
@@ -428,7 +440,7 @@ button{cursor:pointer}
     <div class="notice">
       Тренировки 0.2: нажми на тренировку, чтобы открыть карточку и записать, что сделал. Данные сохраняются на устройстве. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.7-alpha · STATE 1.0 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1</div>
+    <div class="version">KSTM 0.8-alpha · STATE 1.1 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1</div>
   </section>
 
 </main>
@@ -795,25 +807,42 @@ JSON.stringify(data)
 let statePeriod="morning";
 function ensureTodayState(){
 const st=(data.state[todayKey]&&typeof data.state[todayKey]==="object"&&!Array.isArray(data.state[todayKey]))?data.state[todayKey]:(data.state[todayKey]={});
-if(!st.periods||typeof st.periods!=="object"){st.periods={morning:{},day:{},evening:{}};["energy","mood","focus"].forEach(id=>{if(st[id]!=null)st.periods.morning[id]=Number(st[id]);});}
-["morning","day","evening"].forEach(p=>{if(!st.periods[p]||typeof st.periods[p]!=="object")st.periods[p]={};});return st;
+if(!st.periods||typeof st.periods!=="object"||Array.isArray(st.periods)){
+st.periods={morning:{},day:{},evening:{}};
+["energy","mood","focus"].forEach(id=>{if(st[id]!=null)st.periods.morning[id]=Number(st[id]);});
 }
-function stateDayPercent(){const st=ensureTodayState(),vals=[];["morning","day","evening"].forEach(p=>data.stateMetrics.forEach(m=>{const r=st.periods[p][m.id];if(r!=null){const v=Number(r);vals.push(m.direction==="negative"?6-v:v);}}));return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/(vals.length*5)*100):null;}
-function setStateMetric(id,value){ensureTodayState().periods[statePeriod][id]=Number(value);save();renderState();}
+["morning","day","evening"].forEach(p=>{if(!st.periods[p]||typeof st.periods[p]!=="object"||Array.isArray(st.periods[p]))st.periods[p]={};});
+return st;
+}
+function normalizedStateValue(metric,raw){if(raw==null)return null;const v=Number(raw);if(!Number.isFinite(v)||v<1||v>5)return null;return metric.direction==="negative"?6-v:v;}
+function percentFromValues(values){const clean=values.filter(v=>v!=null);return clean.length?Math.round(clean.reduce((a,b)=>a+b,0)/(clean.length*5)*100):null;}
+function stateMetricPercent(metric){const st=ensureTodayState();return percentFromValues(["morning","day","evening"].map(p=>normalizedStateValue(metric,st.periods[p][metric.id])));}
+function statePeriodPercent(period){const st=ensureTodayState();return percentFromValues(data.stateMetrics.map(metric=>normalizedStateValue(metric,st.periods[period][metric.id])));}
+function stateDayPercent(){const st=ensureTodayState(),vals=[];["morning","day","evening"].forEach(period=>data.stateMetrics.forEach(metric=>vals.push(normalizedStateValue(metric,st.periods[period][metric.id]))));return percentFromValues(vals);}
+function setStateMetric(id,value){const st=ensureTodayState();st.periods[statePeriod][id]=Number(value);st.updatedAt=new Date().toISOString();save();renderState();}
 function renderState(){
 const root=document.getElementById("stateMetrics");if(!root)return;const st=ensureTodayState();root.textContent="";
-document.querySelectorAll(".statePeriod").forEach(b=>b.classList.toggle("active",b.dataset.period===statePeriod));
-data.stateMetrics.forEach(m=>{const w=document.createElement("div");w.className="stateMetric";const h=document.createElement("div");h.className="stateMetricHead";const n=document.createElement("div");n.className="stateMetricName";n.textContent=m.name;const v=document.createElement("div");v.className="stateMetricValue";const cur=st.periods[statePeriod][m.id]??null;v.textContent=cur==null?"—":cur+"/5";h.append(n,v);
-if(!m.builtin){const d=document.createElement("button");d.className="stateMetricDelete";d.textContent="×";d.onclick=()=>{if(!confirm(`Удалить показатель «${m.name}»?`))return;data.stateMetrics=data.stateMetrics.filter(x=>x.id!==m.id);save();renderState();};h.append(d);}
-const s=document.createElement("div");s.className="stateScale";for(let i=1;i<=5;i++){const x=document.createElement("button");x.textContent=i;if(cur===i)x.classList.add("active");x.onclick=()=>setStateMetric(m.id,i);s.append(x);}w.append(h,s);root.append(w);});
-const pct=stateDayPercent();document.getElementById("stateScore").style.setProperty("--score",pct??0);document.getElementById("stateScoreValue").textContent=pct==null?"—":pct+"%";
+document.querySelectorAll(".statePeriod").forEach(btn=>btn.classList.toggle("active",btn.dataset.period===statePeriod));
+data.stateMetrics.forEach(metric=>{
+const wrap=document.createElement("div");wrap.className="stateMetric";
+const head=document.createElement("div");head.className="stateMetricHead";
+const name=document.createElement("div");name.className="stateMetricName";name.textContent=metric.name;
+const current=st.periods[statePeriod][metric.id]??null;
+const value=document.createElement("div");value.className="stateMetricValue";value.textContent=current==null?"—":current+"/5";head.append(name,value);
+if(!metric.builtin){const del=document.createElement("button");del.className="stateMetricDelete";del.textContent="×";del.setAttribute("aria-label","Удалить показатель");del.onclick=()=>{if(!confirm(`Удалить показатель «${metric.name}»?`))return;data.stateMetrics=data.stateMetrics.filter(x=>x.id!==metric.id);save();renderState();};head.append(del);}
+const scale=document.createElement("div");scale.className="stateScale";for(let i=1;i<=5;i++){const button=document.createElement("button");button.textContent=i;if(Number(current)===i)button.classList.add("active");button.onclick=()=>setStateMetric(metric.id,i);scale.append(button);}
+const average=document.createElement("div");average.className="stateMetricAverage";const metricPct=stateMetricPercent(metric);average.innerHTML=`СРЕДНЕЕ ЗА ДЕНЬ · <b>${metricPct==null?"—":metricPct+"%"}</b>`;
+wrap.append(head,scale,average);root.append(wrap);
+});
+const total=stateDayPercent();document.getElementById("stateScore").style.setProperty("--score",total??0);document.getElementById("stateScoreValue").textContent=total==null?"—":total+"%";
+[["morning","stateMorningPercent"],["day","stateDayPeriodPercent"],["evening","stateEveningPercent"]].forEach(([p,id])=>{const pct=statePeriodPercent(p);document.getElementById(id).textContent=pct==null?"—":pct+"%";});
 }
 function addStateMetric(){const input=document.getElementById("stateMetricName"),name=input.value.trim();if(!name)return;if(data.stateMetrics.some(m=>m.name.toLowerCase()===name.toLowerCase())){alert("Такой показатель уже есть");return;}data.stateMetrics.push({id:"metric-"+uid(),name,direction:document.getElementById("stateMetricDirection").value,builtin:false});input.value="";document.getElementById("stateAddForm").classList.remove("open");save();renderState();}
-document.querySelectorAll(".statePeriod").forEach(b=>b.onclick=()=>{statePeriod=b.dataset.period;renderState();});
+document.querySelectorAll(".statePeriod").forEach(btn=>btn.onclick=()=>{statePeriod=btn.dataset.period;renderState();});
 document.getElementById("stateAddToggle").onclick=()=>document.getElementById("stateAddForm").classList.toggle("open");
 document.getElementById("stateMetricAdd").onclick=addStateMetric;
 document.getElementById("stateMetricName").addEventListener("keydown",e=>{if(e.key==="Enter")addStateMetric();});
-function setEnergy(v){statePeriod="morning";setStateMetric("energy",v)}function setMood(v){statePeriod="morning";setStateMetric("mood",v)}function setFocus(v){statePeriod="morning";setStateMetric("focus",v)}function renderEnergy(){renderState()}function renderMood(){renderState()}function renderFocus(){renderState()}
+function setEnergy(v){setStateMetric("energy",v)}function setMood(v){setStateMetric("mood",v)}function setFocus(v){setStateMetric("focus",v)}function renderEnergy(){renderState()}function renderMood(){renderState()}function renderFocus(){renderState()}
 
 function eventsOn(key){
 
@@ -1934,12 +1963,11 @@ return `${label}: ${done}/${items.length} выполнено\n${lines.join("\n")
 }
 
 function askState(){
-
-const st=data.state[todayKey] || {};
-const value=x=>x==null ? "—" : `${x}/5`;
-
-return `Состояние сегодня\nЭнергия: ${value(st.energy)}\nНастроение: ${value(st.mood)}\nФокус: ${value(st.focus)}`;
-
+const periods=[["Утро","morning"],["День","day"],["Вечер","evening"]];
+const lines=["Состояние сегодня"];
+periods.forEach(([label,key])=>{const pct=statePeriodPercent(key);lines.push(`${label}: ${pct==null?"—":pct+"%"}`);});
+data.stateMetrics.forEach(metric=>{const pct=stateMetricPercent(metric);lines.push(`${metric.name}: ${pct==null?"—":pct+"%"}`);});
+const total=stateDayPercent();lines.push(`Итого за день: ${total==null?"—":total+"%"}`);return lines.join("\\n");
 }
 
 function askAdd(name,key){
