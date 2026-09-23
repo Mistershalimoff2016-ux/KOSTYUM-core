@@ -209,6 +209,30 @@ button{cursor:pointer}
 .statePeriodSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:-7px 0 12px}
 .statePeriodSummary div{text-align:center;color:#65747e;font-size:9px;font-weight:800}
 .statePeriodSummary b{display:block;color:#aebbc3;font-size:11px;margin-top:3px}
+
+.weekCard{cursor:pointer}
+.weekHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.weekHead h2{margin:0}
+.weekToggle{border:0;background:transparent;color:var(--cyan);font-size:20px;padding:4px 0 4px 12px;transition:transform .18s ease}
+.weekCard.open .weekToggle{transform:rotate(180deg)}
+.weekPrimary{margin:17px 0 6px}
+.weekPrimaryTop{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.weekPrimaryLabel{font-size:15px;font-weight:800}
+.weekPrimaryValue{font-size:26px;font-weight:900;color:var(--cyan)}
+.weekDetails{display:none;margin-top:18px;border-top:1px solid rgba(126,232,255,.10);padding-top:16px}
+.weekCard.open .weekDetails{display:block}
+.weekDays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:17px}
+.weekDay{border:1px solid var(--line);background:#091116;color:#8d9aa3;border-radius:13px;padding:9px 2px;text-align:center;min-width:0}
+.weekDay.today{border-color:var(--cyan);background:rgba(126,232,255,.08)}
+.weekDayLabel{font-size:8px;font-weight:850}
+.weekDayNum{font-size:13px;font-weight:900;margin:4px 0}
+.weekDayPct{font-size:9px;color:var(--cyan);font-weight:850}
+.weekStats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.weekStat{border:1px solid rgba(126,232,255,.10);background:#091116;border-radius:14px;padding:11px}
+.weekStat span{display:block;color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.weekStat b{display:block;margin-top:5px;font-size:16px;color:#dce7ed}
+.weekHint{color:#61717b;font-size:10px;margin-top:11px;line-height:1.4}
+
 </style>
 </head>
 
@@ -280,29 +304,36 @@ button{cursor:pointer}
     <div id="nextTasks"></div>
   </section>
 
-  <section class="card">
-    <h2 id="weekTitle">Неделя</h2>
+  <section class="card weekCard" id="weekCard">
+    <div class="weekHead">
+      <h2 id="weekTitle">Неделя</h2>
+      <button class="weekToggle" id="weekToggle" aria-label="Развернуть неделю">⌄</button>
+    </div>
+
+    <div class="weekPrimary">
+      <div class="weekPrimaryTop">
+        <span class="weekPrimaryLabel">Выполнение недели</span>
+        <b class="weekPrimaryValue" id="weekPercent">0%</b>
+      </div>
+      <div class="bar"><div class="fill" id="weekPercentBar"></div></div>
+    </div>
 
     <div class="progressRow">
       <div class="progressTop">
         <span>Активные дни</span>
         <b id="daysProgress">0 / 7</b>
       </div>
-      <div class="bar"><div class="fill" id="daysBar"></div></div>
     </div>
 
-    <div class="progressRow">
-      <div class="progressTop">
-        <span>Тренировки выполнено</span>
-        <b id="trainingProgress">0</b>
+    <div class="weekDetails" id="weekDetails">
+      <div class="weekDays" id="weekDays"></div>
+      <div class="weekStats">
+        <div class="weekStat"><span>Тренировки</span><b id="trainingProgress">0/0</b></div>
+        <div class="weekStat"><span>AI</span><b id="aiProgress">0/0</b></div>
+        <div class="weekStat"><span>Привычки</span><b id="habitWeekProgress">—</b></div>
+        <div class="weekStat"><span>Состояние</span><b id="stateWeekProgress">—</b></div>
       </div>
-    </div>
-
-    <div class="progressRow">
-      <div class="progressTop">
-        <span>AI выполнено</span>
-        <b id="aiProgress">0</b>
-      </div>
+      <div class="weekHint">Нажми на день, чтобы открыть его в календаре.</div>
     </div>
   </section>
 
@@ -440,7 +471,7 @@ button{cursor:pointer}
     <div class="notice">
       Тренировки 0.2: нажми на тренировку, чтобы открыть карточку и записать, что сделал. Данные сохраняются на устройстве. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.8-alpha · STATE 1.1 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1</div>
+    <div class="version">KSTM 0.9-alpha · WEEK 1.0 · STATE 1.2 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1</div>
   </section>
 
 </main>
@@ -709,13 +740,46 @@ Array.isArray(obj.state)
 obj.state={};
 }
 
-if(!Array.isArray(obj.stateMetrics)){
-obj.stateMetrics=[
+const defaultStateMetrics=[
 {id:"energy",name:"Энергия",direction:"positive",builtin:true},
 {id:"mood",name:"Настроение",direction:"positive",builtin:true},
 {id:"focus",name:"Фокус",direction:"positive",builtin:true}
 ];
+
+if(!Array.isArray(obj.stateMetrics)){
+obj.stateMetrics=[];
 }
+
+const metricMap=new Map();
+
+defaultStateMetrics.forEach(m=>metricMap.set(m.id,{...m}));
+
+obj.stateMetrics.forEach(m=>{
+if(m && m.id && m.name){
+metricMap.set(m.id,{...m});
+}
+});
+
+Object.values(obj.state || {}).forEach(day=>{
+if(!day || typeof day!=="object" || !day.periods || typeof day.periods!=="object")return;
+
+Object.values(day.periods).forEach(period=>{
+if(!period || typeof period!=="object")return;
+
+Object.keys(period).forEach(id=>{
+if(!metricMap.has(id)){
+metricMap.set(id,{
+id,
+name:id.startsWith("metric-") ? "Сохранённый показатель" : id,
+direction:"positive",
+builtin:false
+});
+}
+});
+});
+});
+
+obj.stateMetrics=[...metricMap.values()];
 if(!Array.isArray(obj.goals)){
 obj.goals=[];
 }
@@ -1103,99 +1167,142 @@ return x;
 
 }
 
+function statePercentForDate(key){
+const st=data.state&&data.state[key];
+if(!st||!st.periods)return null;
+
+const vals=[];
+
+["morning","day","evening"].forEach(period=>{
+const periodData=st.periods[period]||{};
+
+data.stateMetrics.forEach(metric=>{
+vals.push(
+normalizedStateValue(
+metric,
+periodData[metric.id]
+)
+);
+});
+});
+
+return percentFromValues(vals);
+}
+
 function renderWeek(){
 
-const mon=
-mondayOf(
-new Date()
+const mon=mondayOf(new Date());
+const sun=new Date(mon);
+sun.setDate(mon.getDate()+6);
+
+const keys=Array.from({length:7},(_,i)=>{
+const d=new Date(mon);
+d.setDate(mon.getDate()+i);
+return localDateKey(d);
+});
+
+const weekEvents=data.events.filter(
+e=>keys.includes(e.date)&&e.date<=todayKey
 );
 
-const sun=
-new Date(mon);
+const completed=weekEvents.filter(e=>e.done).length;
 
-sun.setDate(
-mon.getDate()+6
-);
+const weekPct=weekEvents.length
+? Math.round(completed/weekEvents.length*100)
+: 0;
 
-const keys=[];
-
-for(
-let i=0;
-i<7;
-i++
-){
-
-const d=
-new Date(mon);
-
-d.setDate(
-mon.getDate()+i
-);
-
-keys.push(
-localDateKey(d)
-);
-
-}
-
-const weekEvents=
-data.events.filter(
-e=>keys.includes(e.date)
-);
-
-const activeDays=
-new Set(
-weekEvents
-.filter(e=>e.done)
-.map(e=>e.date)
+const activeDays=new Set(
+weekEvents.filter(e=>e.done).map(e=>e.date)
 ).size;
 
-const training=
-weekEvents.filter(
-e=>
-e.type==="training" &&
-e.done
-).length;
+const trainings=weekEvents.filter(e=>e.type==="training");
+const aiItems=weekEvents.filter(e=>e.type==="ai");
 
-const ai=
-weekEvents.filter(
-e=>
-e.type==="ai" &&
-e.done
-).length;
-
-document.getElementById(
-"weekTitle"
-).textContent=
+document.getElementById("weekTitle").textContent=
 `Неделя ${mon.getDate()}–${sun.getDate()} ${
-new Intl.DateTimeFormat(
-"ru-RU",
-{month:"short"}
-).format(sun)
+new Intl.DateTimeFormat("ru-RU",{month:"short"}).format(sun)
 }`;
 
-document.getElementById(
-"daysProgress"
-).textContent=
-`${activeDays} / 7`;
+document.getElementById("weekPercent").textContent=weekPct+"%";
+document.getElementById("weekPercentBar").style.width=weekPct+"%";
+document.getElementById("daysProgress").textContent=`${activeDays} / 7`;
+document.getElementById("trainingProgress").textContent=
+`${trainings.filter(e=>e.done).length}/${trainings.length}`;
+document.getElementById("aiProgress").textContent=
+`${aiItems.filter(e=>e.done).length}/${aiItems.length}`;
 
-document.getElementById(
-"daysBar"
-).style.width=
-(activeDays/7*100)+"%";
+const habitChecks=[];
 
-document.getElementById(
-"trainingProgress"
-).textContent=
-training;
+(data.habits||[]).forEach(habit=>{
+keys.filter(key=>key<=todayKey).forEach(key=>{
+habitChecks.push(!!(habit.checks&&habit.checks[key]));
+});
+});
 
-document.getElementById(
-"aiProgress"
-).textContent=
-ai;
+const habitPct=habitChecks.length
+? Math.round(habitChecks.filter(Boolean).length/habitChecks.length*100)
+: null;
+
+document.getElementById("habitWeekProgress").textContent=
+habitPct===null?"—":habitPct+"%";
+
+const stateValues=keys
+.filter(key=>key<=todayKey)
+.map(statePercentForDate)
+.filter(v=>v!==null);
+
+const stateAvg=stateValues.length
+? Math.round(stateValues.reduce((a,b)=>a+b,0)/stateValues.length)
+: null;
+
+document.getElementById("stateWeekProgress").textContent=
+stateAvg===null?"—":stateAvg+"%";
+
+const root=document.getElementById("weekDays");
+root.textContent="";
+
+const labels=["ПН","ВТ","СР","ЧТ","ПТ","СБ","ВС"];
+
+keys.forEach((key,i)=>{
+const events=eventsOn(key);
+
+const dayPct=events.length&&key<=todayKey
+? Math.round(events.filter(e=>e.done).length/events.length*100)
+: null;
+
+const btn=document.createElement("button");
+
+btn.className="weekDay"+(key===todayKey?" today":"");
+
+btn.innerHTML=
+`<div class="weekDayLabel">${labels[i]}</div>`+
+`<div class="weekDayNum">${parseKey(key).getDate()}</div>`+
+`<div class="weekDayPct">${dayPct===null?"—":dayPct+"%"}</div>`;
+
+btn.onclick=event=>{
+event.stopPropagation();
+
+selectedKey=key;
+
+const d=parseKey(key);
+
+monthCursor=new Date(
+d.getFullYear(),
+d.getMonth(),
+1
+);
+
+document.querySelector(
+'.nav button[data-view="calendar"]'
+).click();
+
+renderCalendar();
+};
+
+root.append(btn);
+});
 
 }
-
 let selectedKey=
 todayKey;
 
@@ -1924,6 +2031,16 @@ renderHabits();
 renderTrainingModule();
 
 }
+
+document.getElementById("weekCard").addEventListener("click",e=>{
+if(e.target.closest(".weekDay"))return;
+document.getElementById("weekCard").classList.toggle("open");
+});
+
+document.getElementById("weekToggle").onclick=e=>{
+e.stopPropagation();
+document.getElementById("weekCard").classList.toggle("open");
+};
 
 renderAll();
 
