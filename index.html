@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#070b0f">
 <title>KSTM</title>
+  <!-- STATE 0.4.2: persistent custom state metrics registry + resilient navigation -->
 <style>
 :root{
   --bg:#070b0f;--panel:rgba(18,27,34,.78);--panel2:#0d151b;
@@ -495,7 +496,7 @@ button{cursor:pointer}
     <div class="notice">
       Тренировки 0.2: нажми на тренировку, чтобы открыть карточку и записать, что сделал. Данные сохраняются на устройстве. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.7-alpha · STATE 0.4 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASSISTANT 0.2</div>
+    <div class="version">KSTM 0.7-alpha · STATE 0.4.2 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASSISTANT 0.2</div>
   </section>
 
 </main>
@@ -852,12 +853,43 @@ return ensureStateData(applyHistoryMigration(data));
 
 let data=loadData();
 
+/* STATE 0.4.1: keep custom state metric definitions in a small dedicated
+   registry too. This makes their UI restoration independent from the main
+   KSTM data object and repairs metrics created by STATE 0.4. */
+const STATE_METRICS_STORE=STORE+"__stateMetrics";
+
+function normalizeStateMetrics(list){
+ return (Array.isArray(list)?list:[])
+  .filter(m=>m && typeof m==="object" && m.id && m.name)
+  .map(m=>({
+    id:String(m.id),
+    name:String(m.name).slice(0,28),
+    direction:m.direction==="down" ? "down" : "up"
+  }));
+}
+
+function restoreStateMetricsRegistry(){
+ let registry=[];
+ try{ registry=normalizeStateMetrics(JSON.parse(localStorage.getItem(STATE_METRICS_STORE))); }catch(e){}
+ const main=normalizeStateMetrics(data.stateMetrics);
+ const merged=[];
+ [...main,...registry].forEach(m=>{
+   if(!merged.some(x=>x.id===m.id || x.name.toLowerCase()===m.name.toLowerCase())) merged.push(m);
+ });
+ data.stateMetrics=merged;
+ localStorage.setItem(STATE_METRICS_STORE,JSON.stringify(merged));
+ localStorage.setItem(STORE,JSON.stringify(data));
+}
+
+restoreStateMetricsRegistry();
+
 function save(){
 
 localStorage.setItem(
 STORE,
 JSON.stringify(data)
 );
+localStorage.setItem(STATE_METRICS_STORE,JSON.stringify(normalizeStateMetrics(data.stateMetrics)));
 
 }
 
@@ -2145,20 +2177,24 @@ if(e.key==="Enter")addTrainingSession();
 });
 
 function renderAll(){
-
-renderCore();
-
-renderCalendar();
-
-renderProgress();
-
-renderGoals();
-
-renderHabits();
-
-renderTrainingModule();
-
+  /* STATE 0.4.2: one module must never disable the rest of KSTM. */
+  [renderCore,renderCalendar,renderProgress,renderGoals,renderHabits,renderTrainingModule].forEach(fn=>{
+    try{ fn(); }catch(err){ console.error("KSTM render error:",fn.name,err); }
+  });
 }
+
+/* Bind main navigation before the first render. If any module has bad saved
+   data, Calendar / Progress / More still remain clickable. */
+document.querySelectorAll(".nav button").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+    const target=document.getElementById("view-"+btn.dataset.view);
+    if(target) target.classList.add("active");
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+});
 
 renderAll();
 
@@ -2359,41 +2395,7 @@ btn=>{
 
 btn.onclick=()=>{
 
-document.querySelectorAll(
-".nav button"
-).forEach(
-x=>x.classList.remove(
-"active"
-)
-);
-
-btn.classList.add(
-"active"
-);
-
-document.querySelectorAll(
-".view"
-).forEach(
-x=>x.classList.remove(
-"active"
-)
-);
-
-document.getElementById(
-"view-"+btn.dataset.view
-).classList.add(
-"active"
-);
-
-window.scrollTo({
-top:0,
-behavior:"smooth"
-});
-
-};
-
-}
-);
+/* Main navigation is bound before renderAll (STATE 0.4.2). */
 
 </script>
 </body>
