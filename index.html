@@ -201,35 +201,6 @@ button{cursor:pointer}
 .trainingSavedHint{min-height:18px;color:var(--green);font-size:11px;margin-top:9px}
 @media(max-width:390px){.trainingSheetActions{grid-template-columns:1fr}}
 
-.statePeriods{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:2px 0 6px}
-.statePeriodBtn{border:1px solid var(--line);background:rgba(7,16,22,.62);color:var(--muted);border-radius:12px;padding:8px 3px;font-size:10px;font-weight:800;letter-spacing:.08em}
-.statePeriodBtn.active{color:#071016;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 14px rgba(126,232,255,.18)}
-.statePeriodHint{min-height:16px;color:var(--muted);font-size:10px;letter-spacing:.08em;margin:0 0 6px;text-transform:uppercase}
-.stateCardHead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
-.stateCardHead h2{margin-bottom:0}
-.stateDayAvg{display:flex;align-items:center;gap:8px;flex:0 0 auto}
-.stateDayAvgText{text-align:right;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.10em;line-height:1.25;text-transform:uppercase}
-.stateAvgRing{--pct:0;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--cyan) calc(var(--pct)*1%),rgba(126,232,255,.10) 0);box-shadow:0 0 18px rgba(126,232,255,.08)}
-.stateAvgRing:before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0b141a;border:1px solid rgba(126,232,255,.16)}
-.stateAvgRing span{position:relative;z-index:1;color:var(--text);font-size:12px;font-weight:900;letter-spacing:-.02em}
-
-.stateCustomList{margin-top:2px}
-.stateCustomMetric{padding-top:2px}
-.stateCustomHead{display:flex;align-items:center;gap:8px}
-.stateCustomHead .energyHead{flex:1;margin:0}
-.stateMetricRemove{border:0;background:transparent;color:#6f7d87;font-size:20px;line-height:1;padding:4px 2px}
-.stateMetricRemove:active{color:var(--danger)}
-.stateMetricDirection{color:#667680;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:-2px 0 5px}
-.stateAddToggle{width:100%;margin-top:10px;border:1px dashed rgba(126,232,255,.28);background:rgba(7,16,22,.35);color:var(--cyan);border-radius:13px;padding:10px;font:inherit;font-size:11px;font-weight:850;letter-spacing:.06em}
-.stateAddForm{display:none;margin-top:8px;padding:10px;border:1px solid rgba(126,232,255,.16);border-radius:14px;background:rgba(7,16,22,.38)}
-.stateAddForm.open{display:block}
-.stateAddInput,.stateAddSelect{width:100%;border:1px solid rgba(126,232,255,.24);background:#071015;color:var(--text);border-radius:11px;padding:10px;font:inherit;outline:none}
-.stateAddSelect{margin-top:7px}
-.stateAddActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
-.stateAddActions button{border-radius:11px;padding:9px;font:inherit;font-size:10px;font-weight:850}
-.stateAddSave{border:1px solid rgba(126,232,255,.45);background:rgba(126,232,255,.12);color:var(--cyan)}
-.stateAddCancel{border:1px solid rgba(129,144,155,.22);background:transparent;color:var(--muted)}
-
 </style>
 </head>
 
@@ -259,21 +230,8 @@ button{cursor:pointer}
   </section>
 
   <div class="grid2">
-    <section class="card stateCard">
-      <div class="stateCardHead">
-        <h2>Состояние</h2>
-        <div class="stateDayAvg" aria-label="Среднее состояние за день">
-          <div class="stateDayAvgText">СРЕДНЕЕ<br>ЗА ДЕНЬ</div>
-          <div class="stateAvgRing" id="stateAvgRing" style="--pct:0"><span id="stateAvgValue">—</span></div>
-        </div>
-      </div>
-      <div class="statePeriods" id="statePeriods">
-        <button class="statePeriodBtn" data-period="morning">УТРО</button>
-        <button class="statePeriodBtn" data-period="day">ДЕНЬ</button>
-        <button class="statePeriodBtn" data-period="evening">ВЕЧЕР</button>
-      </div>
-      <div class="statePeriodHint" id="statePeriodHint"></div>
-
+    <section class="card">
+      <h2>Состояние</h2>
       <div class="energyHead">
         <span>Энергия</span>
         <span class="energyValue" id="energyValue">—</span>
@@ -306,19 +264,6 @@ button{cursor:pointer}
         <button class="focusBtn" data-focus="3">3</button>
         <button class="focusBtn" data-focus="4">4</button>
         <button class="focusBtn" data-focus="5">5</button>
-      </div>
-      <div class="stateCustomList" id="stateCustomList"></div>
-      <button class="stateAddToggle" id="stateAddToggle" type="button">+ ДОБАВИТЬ ПОКАЗАТЕЛЬ</button>
-      <div class="stateAddForm" id="stateAddForm">
-        <input class="stateAddInput" id="stateAddName" maxlength="28" placeholder="Например: Стресс">
-        <select class="stateAddSelect" id="stateAddDirection">
-          <option value="up">5 = лучше</option>
-          <option value="down">5 = хуже</option>
-        </select>
-        <div class="stateAddActions">
-          <button class="stateAddCancel" id="stateAddCancel" type="button">ОТМЕНА</button>
-          <button class="stateAddSave" id="stateAddSave" type="button">ДОБАВИТЬ</button>
-        </div>
       </div>
     </section>
 
@@ -495,7 +440,7 @@ button{cursor:pointer}
     <div class="notice">
       Тренировки 0.2: нажми на тренировку, чтобы открыть карточку и записать, что сделал. Данные сохраняются на устройстве. Привычки 0.1: недельная отметка и серия.
     </div>
-    <div class="version">KSTM 0.7-alpha · STATE 0.4 · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASSISTANT 0.2</div>
+    <div class="version">KSTM 0.6-alpha · TRAINING 0.2 · HABITS 0.1 · GOALS 0.1 · ASK 0.1</div>
   </section>
 
 </main>
@@ -523,13 +468,13 @@ button{cursor:pointer}
 </div>
 
 <div class="ask">
-  <button class="askOpen" id="askOpen">АССИСТЕНТ KSTM — ОТКРЫТЬ</button>
+  <button class="askOpen" id="askOpen">ASK KSTM — ОТКРЫТЬ</button>
 </div>
 
 <div class="askPanel" id="askPanel" aria-hidden="true">
   <div class="askSheet">
     <div class="askHead">
-      <div class="askTitle">АССИСТЕНТ KSTM</div>
+      <div class="askTitle">ASK KSTM</div>
       <button class="askClose" id="askClose" aria-label="Закрыть">×</button>
     </div>
     <div class="askReply" id="askReply">Готов. Я работаю с данными KSTM на этом устройстве.</div>
@@ -772,15 +717,6 @@ if(!Array.isArray(obj.habits)){
 obj.habits=[];
 }
 
-if(!Array.isArray(obj.stateMetrics)){
-obj.stateMetrics=[];
-}
-obj.stateMetrics=obj.stateMetrics.filter(m=>m && typeof m==="object" && m.id && m.name).map(m=>({
- id:String(m.id),
- name:String(m.name).slice(0,28),
- direction:m.direction==="down" ? "down" : "up"
-}));
-
 obj.habits.forEach(h=>{
 if(!h.checks || typeof h.checks!=="object" || Array.isArray(h.checks)){
 h.checks={};
@@ -861,223 +797,143 @@ JSON.stringify(data)
 
 }
 
-const STATE_PERIODS={
-morning:{label:"Утро",range:"до 11:59"},
-day:{label:"День",range:"12:00–17:59"},
-evening:{label:"Вечер",range:"с 18:00"}
-};
+function setEnergy(value){
 
-function autoStatePeriod(){
-const h=new Date().getHours();
-if(h<12)return "morning";
-if(h<18)return "day";
-return "evening";
-}
+const current=
+data.state[todayKey] || {};
 
-let selectedStatePeriod=autoStatePeriod();
-
-function ensureTodayPeriods(){
-const current=data.state[todayKey] || {};
-if(!current.periods || typeof current.periods!=="object" || Array.isArray(current.periods)){
-current.periods={};
-}
-
-/* Сохраняем уже введённую сегодня старую оценку.
-   При первом переходе STATE 0.1 → 0.2 переносим её в утренний снимок. */
-if(
-!current.state02Migrated &&
-(current.energy!=null || current.mood!=null || current.focus!=null) &&
-!current.periods.morning
-){
-current.periods.morning={
-energy:current.energy ?? null,
-mood:current.mood ?? null,
-focus:current.focus ?? null,
-updatedAt:current.updatedAt || new Date().toISOString(),
-migratedFromState01:true
-};
-current.state02Migrated=true;
-}
-
-data.state[todayKey]=current;
-save();
-}
-
-function stateSnapshot(period=selectedStatePeriod){
-ensureTodayPeriods();
-return data.state[todayKey].periods?.[period] || {};
-}
-
-function setStateMetric(metric,value,period=selectedStatePeriod){
-ensureTodayPeriods();
-const current=data.state[todayKey];
-const snap=current.periods[period] || {};
-current.periods[period]={
-...snap,
-[metric]:value,
+data.state[todayKey]={
+...current,
+energy:value,
 updatedAt:new Date().toISOString()
 };
-current.updatedAt=new Date().toISOString();
+
 save();
-renderState();
+renderEnergy();
+
 }
 
-function renderMetric(metric,valueId,buttonClass,dataKey){
-const value=stateSnapshot()[metric] ?? null;
-document.getElementById(valueId).textContent=value===null ? "—" : `${value}/5`;
-document.querySelectorAll(`.${buttonClass}`).forEach(btn=>{
-btn.classList.toggle("active",Number(btn.dataset[dataKey])===value);
+function renderEnergy(){
+
+const value=
+data.state[todayKey]?.energy ?? null;
+
+document.getElementById(
+"energyValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".energyBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.energy)===value
+);
 });
+
 }
 
-function stateMetricDefinitions(){
-return [
- {id:"energy",name:"Энергия",direction:"up",fixed:true},
- {id:"mood",name:"Настроение",direction:"up",fixed:true},
- {id:"focus",name:"Фокус",direction:"up",fixed:true},
- ...(data.stateMetrics || []).map(m=>({...m,fixed:false}))
-];
-}
-
-function metricScore(value,direction){
-const v=Number(value);
-if(!Number.isFinite(v) || v<1 || v>5)return null;
-return direction==="down" ? 6-v : v;
-}
-
-function renderCustomStateMetrics(){
-const host=document.getElementById("stateCustomList");
-if(!host)return;
-const snap=stateSnapshot();
-host.innerHTML=(data.stateMetrics || []).map(m=>{
- const value=snap[m.id] ?? null;
- const dir=m.direction==="down" ? "5 = хуже" : "5 = лучше";
- return `<div class="stateCustomMetric" data-metric-wrap="${m.id}">
-   <div class="stateCustomHead">
-     <div class="energyHead"><span>${escapeHtml(m.name)}</span><span class="energyValue">${value==null ? "—" : value+"/5"}</span></div>
-     <button class="stateMetricRemove" type="button" data-remove-state-metric="${m.id}" aria-label="Удалить показатель">×</button>
-   </div>
-   <div class="stateMetricDirection">${dir}</div>
-   <div class="energyScale">${[1,2,3,4,5].map(n=>`<button class="energyBtn ${Number(value)===n ? "active" : ""}" type="button" data-custom-state-metric="${m.id}" data-custom-state-value="${n}">${n}</button>`).join("")}</div>
- </div>`;
-}).join("");
-
-host.querySelectorAll("[data-custom-state-metric]").forEach(btn=>{
- btn.onclick=()=>setStateMetric(btn.dataset.customStateMetric,Number(btn.dataset.customStateValue));
+document.querySelectorAll(
+".energyBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setEnergy(
+Number(btn.dataset.energy)
+);
 });
-host.querySelectorAll("[data-remove-state-metric]").forEach(btn=>{
- btn.onclick=()=>{
-   const id=btn.dataset.removeStateMetric;
-   const metric=(data.stateMetrics || []).find(m=>m.id===id);
-   if(!metric)return;
-   if(!confirm(`Удалить показатель «${metric.name}»? История оценок останется в данных, но показатель больше не будет отображаться.`))return;
-   data.stateMetrics=data.stateMetrics.filter(m=>m.id!==id);
-   save();
-   renderState();
- };
-});
-}
 
-function addCustomStateMetric(){
-const input=document.getElementById("stateAddName");
-const select=document.getElementById("stateAddDirection");
-const name=(input?.value || "").trim();
-if(!name){input?.focus();return;}
-if((data.stateMetrics || []).some(m=>m.name.toLowerCase()===name.toLowerCase())){
- alert("Такой показатель уже есть.");
- return;
-}
-const id="custom_"+uid();
-data.stateMetrics.push({id,name:name.slice(0,28),direction:select?.value==="down" ? "down" : "up"});
+function setMood(value){
+
+const current=
+data.state[todayKey] || {};
+
+data.state[todayKey]={
+...current,
+mood:value,
+updatedAt:new Date().toISOString()
+};
+
 save();
-if(input)input.value="";
-document.getElementById("stateAddForm")?.classList.remove("open");
-renderState();
+renderMood();
+
 }
 
-function renderStateDayAverage(){
-ensureTodayPeriods();
-const periods=data.state[todayKey].periods || {};
-const values=[];
-["morning","day","evening"].forEach(period=>{
-  const snap=periods[period] || {};
-  stateMetricDefinitions().forEach(metric=>{
-    const score=metricScore(snap[metric.id],metric.direction);
-    if(score!==null)values.push(score);
-  });
-});
-const ring=document.getElementById("stateAvgRing");
-const label=document.getElementById("stateAvgValue");
-if(!ring || !label)return;
-if(!values.length){
-  ring.style.setProperty("--pct",0);
-  label.textContent="—";
-  return;
-}
-const avg=values.reduce((sum,v)=>sum+v,0)/values.length;
-const pct=Math.round((avg/5)*100);
-ring.style.setProperty("--pct",pct);
-label.textContent=`${pct}%`;
-}
+function renderMood(){
 
-function renderState(){
-ensureTodayPeriods();
+const value=
+data.state[todayKey]?.mood ?? null;
 
-document.querySelectorAll(".statePeriodBtn").forEach(btn=>{
-btn.classList.toggle("active",btn.dataset.period===selectedStatePeriod);
+document.getElementById(
+"moodValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".moodBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.mood)===value
+);
 });
 
-const meta=STATE_PERIODS[selectedStatePeriod];
-const hint=document.getElementById("statePeriodHint");
-if(hint)hint.textContent=`${meta.label} · ${meta.range}`;
-
-renderMetric("energy","energyValue","energyBtn","energy");
-renderMetric("mood","moodValue","moodBtn","mood");
-renderMetric("focus","focusValue","focusBtn","focus");
-renderCustomStateMetrics();
-renderStateDayAverage();
 }
 
-document.querySelectorAll(".statePeriodBtn").forEach(btn=>{
-btn.onclick=()=>{
-selectedStatePeriod=btn.dataset.period;
-renderState();
+document.querySelectorAll(
+".moodBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setMood(
+Number(btn.dataset.mood)
+);
+});
+
+function setFocus(value){
+
+const current=
+data.state[todayKey] || {};
+
+data.state[todayKey]={
+...current,
+focus:value,
+updatedAt:new Date().toISOString()
 };
+
+save();
+renderFocus();
+
+}
+
+function renderFocus(){
+
+const value=
+data.state[todayKey]?.focus ?? null;
+
+document.getElementById(
+"focusValue"
+).textContent=
+value===null ? "—" : `${value}/5`;
+
+document.querySelectorAll(
+".focusBtn"
+).forEach(btn=>{
+btn.classList.toggle(
+"active",
+Number(btn.dataset.focus)===value
+);
 });
 
-document.querySelectorAll(".energyBtn").forEach(btn=>{
-btn.onclick=()=>setStateMetric("energy",Number(btn.dataset.energy));
+}
+
+document.querySelectorAll(
+".focusBtn"
+).forEach(btn=>{
+btn.onclick=()=>
+setFocus(
+Number(btn.dataset.focus)
+);
 });
-
-document.querySelectorAll(".moodBtn").forEach(btn=>{
-btn.onclick=()=>setStateMetric("mood",Number(btn.dataset.mood));
-});
-
-document.querySelectorAll(".focusBtn").forEach(btn=>{
-btn.onclick=()=>setStateMetric("focus",Number(btn.dataset.focus));
-});
-
-const stateAddToggle=document.getElementById("stateAddToggle");
-const stateAddForm=document.getElementById("stateAddForm");
-const stateAddName=document.getElementById("stateAddName");
-if(stateAddToggle)stateAddToggle.onclick=()=>{
- stateAddForm?.classList.toggle("open");
- if(stateAddForm?.classList.contains("open"))setTimeout(()=>stateAddName?.focus(),50);
-};
-document.getElementById("stateAddCancel")?.addEventListener("click",()=>{
- stateAddForm?.classList.remove("open");
- if(stateAddName)stateAddName.value="";
-});
-document.getElementById("stateAddSave")?.addEventListener("click",addCustomStateMetric);
-stateAddName?.addEventListener("keydown",e=>{if(e.key==="Enter")addCustomStateMetric();});
-
-function setEnergy(value){setStateMetric("energy",value,autoStatePeriod());}
-function setMood(value){setStateMetric("mood",value,autoStatePeriod());}
-function setFocus(value){setStateMetric("focus",value,autoStatePeriod());}
-
-function renderEnergy(){renderState();}
-function renderMood(){renderState();}
-function renderFocus(){renderState();}
 
 function eventsOn(key){
 
@@ -1312,6 +1168,11 @@ document.getElementById(
 );
 
 }
+
+renderEnergy();
+renderMood();
+renderFocus();
+renderWeek();
 
 }
 
@@ -2144,12 +2005,15 @@ if(e.key==="Enter")addTrainingSession();
 function renderAll(){
 
 renderCore();
-renderState();
-renderWeek();
+
 renderCalendar();
+
 renderProgress();
+
 renderGoals();
+
 renderHabits();
+
 renderTrainingModule();
 
 }
@@ -2193,15 +2057,10 @@ return `${label}: ${done}/${items.length} выполнено\n${lines.join("\n")
 
 function askState(){
 
-ensureTodayPeriods();
-const periods=data.state[todayKey].periods || {};
+const st=data.state[todayKey] || {};
 const value=x=>x==null ? "—" : `${x}/5`;
-const line=(key,label)=>{
-const st=periods[key] || {};
-return `${label}: энергия ${value(st.energy)}, настроение ${value(st.mood)}, фокус ${value(st.focus)}`;
-};
 
-return `Состояние сегодня\n${line("morning","Утро")}\n${line("day","День")}\n${line("evening","Вечер")}`;
+return `Состояние сегодня\nЭнергия: ${value(st.energy)}\nНастроение: ${value(st.mood)}\nФокус: ${value(st.focus)}`;
 
 }
 
@@ -2275,19 +2134,19 @@ return askState();
 let m=q.match(/^(?:энергия|energy)\s*([1-5])$/);
 if(m){
 setEnergy(Number(m[1]));
-return `Энергия: ${m[1]}/5 · ${STATE_PERIODS[autoStatePeriod()].label}.`;
+return `Энергия: ${m[1]}/5.`;
 }
 
 m=q.match(/^(?:настроение|mood)\s*([1-5])$/);
 if(m){
 setMood(Number(m[1]));
-return `Настроение: ${m[1]}/5 · ${STATE_PERIODS[autoStatePeriod()].label}.`;
+return `Настроение: ${m[1]}/5.`;
 }
 
 m=q.match(/^(?:фокус|focus)\s*([1-5])$/);
 if(m){
 setFocus(Number(m[1]));
-return `Фокус: ${m[1]}/5 · ${STATE_PERIODS[autoStatePeriod()].label}.`;
+return `Фокус: ${m[1]}/5.`;
 }
 
 if(/^(добавь|добавить)\b/.test(q)){
