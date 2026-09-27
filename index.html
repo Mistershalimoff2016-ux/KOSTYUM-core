@@ -711,11 +711,28 @@ renderAll();
 <dialog id="financeLab" aria-labelledby="financeLabTitle">
  <div class="lab-wrap">
   <div class="lab-head"><h2 id="financeLabTitle">Finance 1.0 · тест</h2><button id="financeLabClose" type="button" aria-label="Закрыть тестовый Finance">✕</button></div>
-  <p class="lab-banner">Тестовая среда. Изменения сохраняются отдельно на этом устройстве. Рабочий учёт KSTM не меняется. Реальные суммы пока не вводите.</p>
+  <details class="lab-banner"><summary>Тест · данные отдельно на устройстве</summary><p>Рабочий учёт KSTM не меняется. Реальные суммы пока не вводите.</p></details>
   <div id="financeLabMessage" role="status" aria-live="polite"></div>
   <div id="financeLabContent"></div>
  </div>
 </dialog>
+<style>
+#financeLab{color-scheme:dark;scroll-padding-top:118px}
+#financeLab .lab-wrap{padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+#financeLab .lab-head{position:sticky;top:0;z-index:5;align-items:center;background:#0b1419;padding:6px 0;border-bottom:1px solid #29454e;min-height:58px}
+#financeLab h2{font-size:19px}#financeLab h3{font-size:18px;margin:8px 0 12px}#financeLab .lab-head button{min-width:44px}
+#financeLab .lab-banner{padding:8px 10px;margin:8px 0;font-size:12px}#financeLab summary{cursor:pointer;min-height:28px;align-content:center}#financeLab .lab-banner p{margin:8px 0 0}
+#financeLab .lab-nav{display:flex;flex-wrap:wrap;gap:6px;position:sticky;top:58px;z-index:4;background:#0b1419;padding:6px 0}#financeLab .lab-nav button{font-size:14px;padding:8px;min-height:44px}
+#financeLab .lab-card{padding:12px;margin:10px 0}#financeLab label{margin:10px 0;gap:5px}#financeLab .lab-note{font-size:13px;line-height:1.4;margin:8px 0}
+#financeLab .lab-card form>button[type=submit]{position:sticky;bottom:0;z-index:2;background:#22434d;border-color:#85e9fb;box-shadow:0 6px 0 6px #102129}
+#financeLab .lab-card>button{margin:4px 4px 4px 0}#financeLab .lab-card>button.lab-wide{margin:8px 0}
+#financeLab .lab-compact{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:10px 12px;margin:7px 0;min-height:62px}
+#financeLab .lab-compact>span{min-width:0;display:flex;flex-direction:column;gap:4px}#financeLab .lab-compact strong{overflow-wrap:anywhere}#financeLab .lab-compact b{flex-shrink:0;font-size:16px}#financeLab .lab-compact small.lab-note{margin:0;font-size:12px}
+#financeLab .lab-finished{margin:16px 0}#financeLab .lab-finished>summary{color:#afc1c9}#financeLab .lab-alert button{border-color:#d5b875;color:#ffe0a0}
+#financeLab input[type=date]{display:block;width:100%;min-width:0;max-width:100%;appearance:none;-webkit-appearance:none;text-align:left}#financeLab input::-webkit-date-and-time-value{text-align:left;min-height:1.5em}
+#financeLab .lab-number{font-size:32px}#financeLab .lab-grid{margin:10px 0}#financeLab .lab-summary b{font-size:20px}
+@media(max-width:370px){#financeLab .lab-compact{flex-wrap:wrap}#financeLab .lab-summary b{font-size:18px}}
+</style>
 <script>
 (function (root, factory) {
   const api = factory();
@@ -745,6 +762,8 @@ renderAll();
     "transfer",
     "adjustment",
     "receivable_return",
+    "loan_received",
+    "loan_repayment",
   ]);
   const SPEND_TYPES = new Set([
     "mandatory",
@@ -891,8 +910,10 @@ renderAll();
     switch (transaction.type) {
       case "income":
       case "receivable_return":
+      case "loan_received":
         return transaction.accountId === accountId ? amount : 0;
       case "expense":
+      case "loan_repayment":
         return transaction.accountId === accountId ? -amount : 0;
       case "transfer":
         return (transaction.toAccountId === accountId ? amount : 0) -
@@ -1361,6 +1382,149 @@ renderAll();
       receivable.closedAt = createdAt;
     }
     return finishCommand(next, createdAt);
+  }
+
+  // Optional v16 extension: older test copies without payables remain readable.
+  // Principal is not an expense or an automatic budget reservation.
+  function addPayable(finance, input) {
+    const next = cloneForCommand(finance), data = input || {};
+    const name = safeString(data.name), amountMinor = normalizeMinor(data.amountMinor);
+    if (!name || amountMinor <= 0) throw new Error("Укажите кому должны и сумму.");
+    if (!["existing", "received"].includes(data.mode)) throw new Error("Выберите существующий долг или получение денег.");
+    if (data.dueDate && !isDateKey(data.dueDate)) throw new Error("Некорректная дата возврата.");
+    const createdAt = nowIso(data.createdAt), id = safeString(data.id, makeId("payable"));
+    next.payables = next.payables || [];
+    next.payables.push({id, name, openingAmountMinor: data.mode === "existing" ? amountMinor : 0,
+      remainingAmountMinor: amountMinor, dueDate: data.dueDate || "", status: "open", createdAt});
+    if (data.mode === "received") {
+      const account = next.accounts.find(a => a.id === data.accountId && !a.archived);
+      if (!account) throw new Error("Выберите счёт поступления.");
+      next.transactions.push({id: makeId("tx"), type: "loan_received", payableId: id,
+        accountId: account.id, amountMinor, description: name, date: safeString(data.date, todayKeyFromIso(createdAt)),
+        status: "posted", affectsBalance: true, source: "payable", createdAt});
+    }
+    return finishCommand(next, createdAt);
+  }
+
+  function repayPayable(finance, input) {
+    const next = cloneForCommand(finance), data = input || {};
+    const debt = (next.payables || []).find(d => d.id === data.payableId && d.status === "open");
+    const account = next.accounts.find(a => a.id === data.accountId && !a.archived);
+    if (!debt || !account) throw new Error("Долг или счёт не найден.");
+    const amountMinor = normalizeMinor(data.amountMinor);
+    if (amountMinor <= 0 || amountMinor > debt.remainingAmountMinor) throw new Error("Сумма возврата превышает долг или равна нулю.");
+    if (accountBalanceMinor(next, account.id) < amountMinor && !account.allowNegative) throw new Error("На выбранном счёте недостаточно денег.");
+    const createdAt = nowIso(data.createdAt);
+    next.transactions.push({id: makeId("tx"), type: "loan_repayment", payableId: debt.id,
+      accountId: account.id, amountMinor, description: debt.name, date: safeString(data.date, todayKeyFromIso(createdAt)),
+      status: "posted", affectsBalance: true, source: "payable", createdAt});
+    debt.remainingAmountMinor -= amountMinor;
+    debt.status = debt.remainingAmountMinor === 0 ? "repaid" : "open";
+    return finishCommand(next, createdAt);
+  }
+
+  function setReminderPreferences(finance, input) {
+    const next = cloneForCommand(finance);
+    if (typeof input?.enabled !== "boolean") throw new Error("Некорректная настройка напоминаний.");
+    next.settings.remindersEnabled = input.enabled;
+    return finishCommand(next);
+  }
+
+  function paymentReminders(finance, today) {
+    if (!isDateKey(today)) throw new Error("Некорректная дата напоминаний.");
+    if (finance.settings.remindersEnabled === false) return [];
+    const end = new Date(today + "T12:00:00Z"); end.setUTCDate(end.getUTCDate() + 3);
+    const limit = end.toISOString().slice(0, 10);
+    return [...finance.obligations.filter(o => o.status === "scheduled").map(o => ({...o, route: "obligation", valueMinor: o.amountMinor})),
+      ...(finance.payables || []).filter(o => o.status === "open").map(o => ({...o, route: "payable", valueMinor: o.remainingAmountMinor})),
+      ...finance.receivables.filter(o => o.status === "open").map(o => ({...o, route: "receivable", valueMinor: o.remainingAmountMinor}))]
+      .filter(o => isDateKey(o.dueDate) && o.dueDate <= limit)
+      .sort((a,b) => a.dueDate.localeCompare(b.dueDate))
+      .map(o => ({id:o.id, name:o.name, dueDate:o.dueDate, route:o.route, amountMinor:o.valueMinor,
+        urgency:o.dueDate < today ? "overdue" : o.dueDate === today ? "today" : "soon"}));
+  }
+
+  function manageRecord(finance, input) {
+    const next = cloneForCommand(finance), data = input || {}, changes = data.changes || {};
+    const fields = {institutions:['name'],accounts:['name','onBudget'],allocations:['name','targetAmountMinor'],
+      obligations:['name','dueDate','amountMinor'],receivables:['name','dueDate'],payables:['name','dueDate']};
+    if (!Object.prototype.hasOwnProperty.call(fields,data.collection)) throw new Error('Недоступный раздел.');
+    const list = next[data.collection] || [], record = list.find(r => r.id === data.id);
+    if (!record) throw new Error('Запись не найдена.');
+    if (data.operation === 'edit') {
+      for (const key of Object.keys(changes)) {
+        if (!fields[data.collection].includes(key)) throw new Error('Недоступное поле.');
+        if (key === 'name' && !safeString(changes[key])) throw new Error('Введите название.');
+        if (key === 'dueDate' && changes[key] && !isDateKey(changes[key])) throw new Error('Некорректная дата.');
+        if (key === 'amountMinor' && record.status !== 'scheduled') throw new Error('Нельзя менять сумму оплаченного платежа.');
+        record[key] = key === 'name' ? safeString(changes[key]) : changes[key];
+      }
+    } else if (data.operation === 'archive') {
+      if (!['accounts','allocations'].includes(data.collection)) throw new Error('Архивирование недоступно.');
+      const balance = data.collection === 'accounts' ? accountBalanceMinor(next,record.id) : allocationAmountMinor(next,record.id);
+      if (balance !== 0) throw new Error('Сначала обнулите остаток.');
+      record.archived = true;
+    } else if (data.operation === 'delete') {
+      const id=record.id;
+      const used=next.transactions.some(t=>[t.accountId,t.fromAccountId,t.toAccountId,t.obligationId,t.receivableId,t.payableId].includes(id)) ||
+        next.allocationEntries.some(e=>e.allocationId===id||e.sourceAccountId===id) || next.accounts.some(a=>a.institutionId===id);
+      if (used) throw new Error('Запись связана с историей. Удаление недоступно.');
+      if (data.collection==='accounts'&&accountBalanceMinor(next,id)!==0) throw new Error('Нельзя удалить счёт с деньгами.');
+      list.splice(list.indexOf(record),1);
+    } else throw new Error('Неизвестное действие.');
+    return finishCommand(next);
+  }
+
+  function addChallenge(finance, input) {
+    const next=cloneForCommand(finance),data=input||{};
+    if(!safeString(data.name)||!['budget','category_free'].includes(data.type)||!isDateKey(data.startDate)||!isDateKey(data.endDate)||data.endDate<data.startDate)throw new Error('Укажите название и корректный период челленджа.');
+    const amountLimitMinor=data.type==='budget'?normalizeMinor(data.amountLimitMinor):0;
+    if(data.type==='budget'&&amountLimitMinor<=0)throw new Error('Укажите лимит больше нуля.');
+    if(data.type==='category_free'&&!next.categories.some(c=>c.id===data.categoryId&&c.direction==='expense'))throw new Error('Выберите категорию расходов.');
+    next.challenges=next.challenges||[];
+    next.challenges.push({id:makeId('challenge'),type:data.type,name:safeString(data.name),startDate:data.startDate,endDate:data.endDate,amountLimitMinor,categoryId:data.type==='category_free'?data.categoryId:null,status:'active',createdAt:nowIso(data.createdAt)});
+    return finishCommand(next,data.createdAt);
+  }
+  function challengeProgress(finance, challenge, today) {
+    if(!isDateKey(today))throw new Error('Некорректная дата.');
+    if(!['budget','category_free'].includes(challenge.type)||!isDateKey(challenge.startDate)||!isDateKey(challenge.endDate))return {status:'unsupported'};
+    const limit=challenge.amountLimitMinor===undefined?rublesToMinor(challenge.amountLimit||0):challenge.amountLimitMinor;
+    const expenseMinor=finance.transactions.filter(t=>t.type==='expense'&&t.status!=='void'&&isDateKey(t.date)&&t.date>=challenge.startDate&&t.date<=challenge.endDate&&t.date<=today&&(challenge.type!=='category_free'||t.categoryId===challenge.categoryId)).reduce((n,t)=>n+t.amountMinor,0);
+    const exceeded=expenseMinor>(challenge.type==='category_free'?0:limit);
+    return {expenseMinor,limitMinor:limit,status:challenge.status==='cancelled'?'cancelled':today<challenge.startDate?'upcoming':exceeded?'exceeded':today>challenge.endDate?'completed':'active'};
+  }
+
+  function changeTransaction(finance, input) {
+    const next=cloneForCommand(finance), data=input||{};
+    const tx=next.transactions.find(t=>t.id===data.transactionId&&t.status!=='void');
+    if(!tx)throw new Error('Операция не найдена.');
+    if(data.operation==='edit') {
+      if(!['income','expense'].includes(tx.type)||tx.obligationId)throw new Error('Связанную операцию можно отменить и записать заново.');
+      tx.amountMinor=normalizeMinor(data.amountMinor);tx.description=safeString(data.description);
+      tx.date=safeString(data.date);tx.categoryId=safeString(data.categoryId);
+      if(tx.type==='expense')tx.spendType=safeString(data.spendType);
+      if(tx.affectsBalance) {
+        const account=next.accounts.find(a=>a.id===data.accountId&&!a.archived);
+        if(!account)throw new Error('Выберите действующий счёт.');
+        tx.accountId=account.id;
+      }
+    } else if(data.operation==='void') {
+      tx.status='void';
+      if(tx.affectsBalance&&tx.obligationId) {
+        const o=next.obligations.find(o=>o.id===tx.obligationId);
+        if(o?.paymentTransactionId===tx.id){o.status='scheduled';o.paymentTransactionId=null;o.paidAt=null;}
+      }
+      if(tx.affectsBalance&&tx.type==='receivable_return') {
+        const r=next.receivables.find(r=>r.id===tx.receivableId);r.remainingAmountMinor+=tx.amountMinor;r.status='open';r.closedAt=null;
+      }
+      if(tx.payableId) {
+        const d=(next.payables||[]).find(d=>d.id===tx.payableId);
+        d.remainingAmountMinor+=tx.type==='loan_received'?-tx.amountMinor:tx.amountMinor;
+        d.status=d.remainingAmountMinor===0?'repaid':'open';
+      }
+    } else throw new Error('Неизвестное действие с операцией.');
+    for(const a of next.accounts)if(!a.allowNegative&&accountBalanceMinor(next,a.id)<0&&accountBalanceMinor(next,a.id)<accountBalanceMinor(finance,a.id))throw new Error('Изменение оставит счёт без достаточного остатка.');
+    return finishCommand(next);
   }
 
   function reconcileAccount(finance, input) {
@@ -2074,6 +2238,8 @@ renderAll();
         errors.push(`Некорректный список ${key}`);
       }
     }
+    if (finance.payables !== undefined && (!Array.isArray(finance.payables) || finance.payables.some(x => !x || typeof x !== "object" || Array.isArray(x)))) errors.push("Некорректный список payables");
+    for (const key of ['challenges','notifications']) if (finance[key] !== undefined && (!Array.isArray(finance[key]) || finance[key].some(x=>!x||typeof x!=='object'||Array.isArray(x)))) errors.push(`Некорректный список ${key}`);
     if (errors.length) return { valid: false, errors, warnings };
     if (finance.currency !== "RUB" || finance.settings?.currency !== "RUB") errors.push("Поддерживается только RUB; валюты нельзя складывать без курса");
     const accountIds = validateUniqueIds(finance.accounts, "accounts", errors);
@@ -2083,6 +2249,9 @@ renderAll();
     validateUniqueIds(finance.allocationEntries, "allocationEntries", errors);
     const obligationIds = validateUniqueIds(finance.obligations, "obligations", errors);
     const receivableIds = validateUniqueIds(finance.receivables, "receivables", errors);
+    const payableIds = validateUniqueIds(finance.payables || [], "payables", errors);
+    if (!Number.isSafeInteger((finance.payables || []).reduce((n,d)=>n+d.remainingAmountMinor,0))) errors.push("Итог моих долгов вне допустимой точности");
+    for (const c of finance.challenges || []) if (c.amountLimitMinor !== undefined && (!Number.isSafeInteger(c.amountLimitMinor) || c.amountLimitMinor < 0)) errors.push('Некорректный лимит челленджа');
     const categoryIds = validateUniqueIds(finance.categories, "categories", errors);
     (finance.accounts || []).forEach((account) => {
       if (!ACCOUNT_TYPES.has(account.type)) errors.push(`Недопустимый тип счёта ${account.type}`);
@@ -2139,6 +2308,7 @@ renderAll();
         (transaction.affectsBalance ? errors : warnings).push(`Операция ${transaction.id}: долг не найден`);
       }
       if (transaction.affectsBalance && transaction.type === "receivable_return" && !transaction.receivableId) errors.push("Возврат должен быть связан с долгом");
+      if (["loan_received", "loan_repayment"].includes(transaction.type) && (!payableIds.has(transaction.payableId) || !transaction.affectsBalance)) errors.push("Долговая операция должна быть связана с моим долгом и счётом");
     });
     (finance.allocations || []).forEach((allocation) => {
       if (!ALLOCATION_TYPES.has(allocation.type)) {
@@ -2186,6 +2356,14 @@ renderAll();
       const settled = finance.transactions.filter(t => t.type === "receivable_return" && t.receivableId === r.id && t.affectsBalance && t.status !== "void").reduce((sum, t) => sum + t.amountMinor, 0);
       if (r.openingRemainingAmountMinor - settled !== r.remainingAmountMinor) errors.push(`Долг ${r.id}: остаток расходится с возвратами`);
       if (r.status !== (r.remainingAmountMinor === 0 ? "received" : "open")) errors.push(`Долг ${r.id}: неверный статус`);
+    });
+    (finance.payables || []).forEach(d => {
+      if (!safeString(d.name) || !Number.isSafeInteger(d.openingAmountMinor) || d.openingAmountMinor < 0 || !Number.isSafeInteger(d.remainingAmountMinor) || d.remainingAmountMinor < 0) errors.push("Некорректная сумма моего долга");
+      if (d.dueDate && !isDateKey(d.dueDate)) errors.push("Некорректный срок моего долга");
+      const flows = finance.transactions.filter(t => t.payableId === d.id && t.status !== "void");
+      const remaining = flows.reduce((n,t) => n + (t.type === "loan_received" ? t.amountMinor : t.type === "loan_repayment" ? -t.amountMinor : 0), d.openingAmountMinor);
+      if (remaining !== d.remainingAmountMinor) errors.push("Остаток моего долга расходится с операциями");
+      if (d.status !== (remaining === 0 ? "repaid" : "open")) errors.push("Некорректный статус моего долга");
     });
     const onBudget = totalCashMinor(finance, { onBudgetOnly: true });
     const allocated = allocatedMinor(finance, { onBudgetOnly: true });
@@ -2264,6 +2442,14 @@ renderAll();
     payObligation,
     addReceivable,
     receiveReceivable,
+    addPayable,
+    repayPayable,
+    setReminderPreferences,
+    paymentReminders,
+    manageRecord,
+    changeTransaction,
+    addChallenge,
+    challengeProgress,
     reconcileAccount,
     addInstitution,
     addAccount,
@@ -2463,8 +2649,9 @@ renderAll();
   else root.KSTMFinanceStore = exported;
 })(globalThis, function(api) {
   'use strict';
-  const allowed = new Set(['addTransaction','moveMoney','allocateMoney','releaseMoney','addObligation','payObligation','addReceivable','receiveReceivable','reconcileAccount','addInstitution','addAccount','addCategory','addAllocation','setNextIncomeDate']);
+  const allowed = new Set(['addTransaction','moveMoney','allocateMoney','releaseMoney','addObligation','payObligation','addReceivable','receiveReceivable','addPayable','repayPayable','setReminderPreferences','reconcileAccount','addInstitution','addAccount','addCategory','addAllocation','setNextIncomeDate']);
   const copy = x => JSON.parse(JSON.stringify(x));
+  allowed.add('manageRecord');allowed.add('changeTransaction');allowed.add('addChallenge');
   function create(initial, options = {}) {
     const validation = api.validateFinanceV16(initial);
     if (!validation.valid) throw new Error(validation.errors.join('; '));
@@ -2502,6 +2689,9 @@ renderAll();
   let store=null, currentRoute=['home'], token=null, readRequest=0, transactionDraft=null;
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   const money=n=>(n/100).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽';
+  const dateLabel=d=>d?new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}):'Без срока';
+  const hooks=new Set();
+  function emit(type,detail={}){for(const fn of hooks)try{fn({type,...JSON.parse(JSON.stringify(detail))});}catch(e){console.warn('Finance extension callback failed',e);}}
   const makeId=()=>crypto.randomUUID();
   const typeNames={cash:'Наличные',checking:'Карта / текущий счёт',savings:'Накопительный счёт',deposit:'Вклад',unassigned:'Без счёта'};
   const spendNames={mandatory:'Обязательный',planned:'Плановый',optional:'Необязательный',impulsive:'Импульсивный',unclassified:'Не указан'};
@@ -2522,10 +2712,15 @@ renderAll();
   function form(parent,submitText,handler){const f=el('form');const submit=el('button',submitText,'lab-wide');submit.type='submit';f.onsubmit=e=>{e.preventDefault();message.textContent='';submit.disabled=true;try{handler();}catch(err){error(err);}finally{submit.disabled=false;}};parent.append(f);return {node:f,finish:()=>f.append(submit)};}
   function attach(finance){store=service.create(finance,{persist(next){const actual=localStorage.getItem(KEY);if(actual!==token)throw new Error('Тестовые данные изменились в другой вкладке. Закрой и снова открой тест.');const serialized=JSON.stringify({format:'KSTM_FINANCE_TEST',finance:next});localStorage.setItem(KEY,serialized);token=serialized;},onChange(){render();}});}
   function start(finance){const v=api.validateFinanceV16(finance);if(!v.valid)throw new Error(v.errors.join('; '));const serialized=JSON.stringify({format:'KSTM_FINANCE_TEST',finance});localStorage.setItem(KEY,serialized);token=serialized;attach(finance);go('home');ok('Тестовая копия готова.');}
-  function dispatch(action,input,route){const previous=currentRoute;if(route)currentRoute=route;try{store.dispatch(action,input);}catch(e){currentRoute=previous;throw e;}ok('Сохранено в тестовой среде.');}
-  function go(name,arg){currentRoute=[name,arg];message.textContent='';render();dialog.scrollTop=0;}
-  function back(name='home',arg){button(root,'‹ Назад',()=>go(name,arg));}
-  function render(){root.replaceChildren();if(!store){welcome();return;}const f=store.getState();const[name,arg]=currentRoute;const routes={home,accounts,account,transaction,history,transfer,allocationList,allocation,obligations,receivables,analytics,settings,challenges};(routes[name]||home)(f,arg);}
+  function dispatch(action,input,route){const previous=currentRoute;if(route)currentRoute=route;try{store.dispatch(action,input);}catch(e){currentRoute=previous;throw e;}dialog.scrollTop=0;ok('Сохранено в тестовой среде.');emit('changed',{action});emit('route',{route:currentRoute});}
+  function go(name,arg){currentRoute=[name,arg];message.textContent='';render();dialog.scrollTop=0;emit('route',{route:currentRoute});}
+  function back(name='home',arg){const bar=el('nav',null,'lab-nav');button(bar,'‹ Назад',()=>go(name,arg));if(name!=='home')button(bar,'На главную',()=>go('home'));root.append(bar);}
+  function render(){root.replaceChildren();if(!store){welcome();return;}const f=store.getState();const[name,arg]=currentRoute;const routes={home,accounts,account,transaction,transactionDetail,history,transfer,allocationList,allocation,newAllocation,obligations,obligation,newObligation,receivables,receivable,newReceivable,payables,payable,newPayable,reminders,incomeDate,manage,analytics,settings,challenges};(routes[name]||home)(f,arg);const managers={account:['accounts','accounts'],allocation:['allocations','allocationList'],obligation:['obligations','obligations'],receivable:['receivables','receivables'],payable:['payables','payables']};if(managers[name]&&currentRoute[0]===name){const[collection,list]=managers[name];button(root.children[0],'Изменить',()=>go('manage',{collection,id:arg,returnRoute:[list]}));}}
+  function editLink(parent,collection,id,returnRoute){button(parent,'Изменить запись',()=>go('manage',{collection,id,returnRoute}),'lab-wide');}
+  function manage(f,context){const{collection,id,returnRoute}=context;back(...returnRoute);const record=(f[collection]||[]).find(r=>r.id===id);if(!record)return go(...returnRoute);const c=card('Изменить запись');const fm=form(c,'Сохранить изменения',()=>{const changes={name:name.value};if(onBudget)changes.onBudget=onBudget.checked;if(target)changes.targetAmountMinor=target.value.trim()?minor(target):0;if(due)changes.dueDate=due.value;if(sum)changes.amountMinor=minor(sum);dispatch('manageRecord',{collection,id,operation:'edit',changes},returnRoute);}),name=field(fm.node,'Название','text',record.name);const onBudget=collection==='accounts'?check(fm.node,'Учитывать в «Можно сегодня»',record.onBudget):null,target=collection==='allocations'?amount(fm.node,'Цель, ₽',String(record.targetAmountMinor/100)):null,due=['obligations','receivables','payables'].includes(collection)?field(fm.node,'Срок','date',record.dueDate||''):null,sum=collection==='obligations'&&record.status==='scheduled'?amount(fm.node,'Сумма, ₽',String(record.amountMinor/100)):null;fm.finish();
+    if(['accounts','allocations'].includes(collection))button(c,'Закрыть с сохранением истории',()=>dispatch('manageRecord',{collection,id,operation:'archive'},returnRoute),'lab-wide');
+    button(c,'Удалить запись',()=>{if(confirm('Удалить запись? Связанные с историей записи удалить нельзя.'))dispatch('manageRecord',{collection,id,operation:'delete'},returnRoute);},'lab-wide');
+  }
   function welcome(){
     const c=card('Проверка нового учёта');note(c,'Выберите JSON-копию с тестовыми данными или начните пустой тест. Сохранённый тест можно продолжить после перезагрузки.');
     button(c,'Начать пустой тест',()=>start(api.createEmptyFinanceV16()),'lab-wide');
@@ -2553,12 +2748,14 @@ renderAll();
     button(c,'Создать отдельный тест',()=>{if(!basis.value)throw new Error('Выберите основу теста.');const choices={balanceBasis:basis.value};if(basis.value==='physical'){if([...sources.values()].some(s=>s.value==='__choose__'))throw new Error('Выберите источник для подушки и каждой цели.');choices.onBudgetAccountIds=[...checks].filter(([,c])=>c.checked).map(([id])=>id);choices.allocationSources=Object.fromEntries([...sources].map(([id,s])=>[id,s.value||null]));}start(api.applyMigrationChoices(source,preview,choices));},'lab-wide');
   }
   function home(f){
-    const s=service.snapshot(f,today()),c=card('Можно сегодня');c.append(el('div',s.daily.valueMinor==null?'—':money(s.daily.valueMinor),'lab-number'));
+    const alerts=api.paymentReminders(f,today());if(alerts.length){const bar=el('div',null,'lab-alert');button(bar,'Напоминания: '+alerts.length+' · '+(alerts.some(a=>a.urgency==='overdue')?'есть просроченные':'ближайшие платежи'),()=>go('reminders'),'lab-wide');root.append(bar);}
+    const s=service.snapshot(f,today()),c=card('Можно сегодня');c.append(el('div',s.daily.valueMinor==null?'—':(s.daily.valueMinor/100).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽','lab-number'));
     const reasons={next_income_date_missing:'Укажите дату следующего дохода.',next_income_date_not_future:'Обновите дату следующего дохода.',obligation_date_unknown:'Нужно уточнить срок обязательства.',allocation_funding_shortfall:'Назначенные деньги не обеспечены остатком счёта. Проверьте накопления.'};
-    note(c,reasons[s.daily.reason]||(s.daily.poolMinor<0?'На обязательства не хватает '+money(-s.daily.poolMinor)+'.':'Верхняя граница на день до '+f.settings.nextIncomeDate+'. Это не цель для трат.'));
-    button(c,'Как рассчитано',()=>go('analytics','daily'));button(c,'Дата дохода',()=>go('settings'));
+    note(c,reasons[s.daily.reason]||(s.daily.poolMinor<0?'На обязательства не хватает '+money(-s.daily.poolMinor)+'.':'Верхняя граница на день до '+dateLabel(f.settings.nextIncomeDate)+'. Это не цель для трат.'));
+    button(c,'Как рассчитано',()=>go('analytics','daily'));button(c,'Дата дохода',()=>go('incomeDate'));
     const grid=el('div',null,'lab-grid');root.append(grid);
     for(const[label,value,route]of [['Деньги',s.total,'accounts'],['Накопления',s.allocated,'allocationList'],['Обязательства',api.obligationsDueMinor(f,'9999-12-31'),'obligations'],['Мне должны',s.receivables,'receivables']]){const b=button(grid,'',()=>go(route),'lab-summary');b.append(el('span',label),el('b',money(value)));}
+    const debts=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0);button(root,'Я должен · '+money(debts),()=>go('payables'),'lab-wide');
     const actions=el('div',null,'lab-grid');root.append(actions);button(actions,'＋ Доход',()=>go('transaction','income'));button(actions,'− Расход',()=>go('transaction','expense'));button(actions,'Перевести',()=>go('transfer'));button(actions,'История',()=>go('history','all'));
     const links=el('div',null,'lab-actions');root.append(links);button(links,'Месяц',()=>go('analytics'));button(links,'Челленджи ('+f.challenges.length+')',()=>go('challenges'));
     note(root,'Управление тестом и его копией — в настройках.');button(root,'Настройки теста',()=>go('settings'));
@@ -2566,7 +2763,7 @@ renderAll();
   function accounts(f){
     back();root.append(el('h3','Деньги'));note(root,'Сумма по этим счетам — единственный общий остаток.');
     const groups=[{id:null,name:'Наличные и прочие деньги'},...f.institutions];
-    for(const b of groups){const list=f.accounts.filter(a=>(a.institutionId||null)===b.id&&!a.archived);if(!list.length&&b.id===null)continue;const c=card(b.name);row(c,'Итого',money(list.reduce((n,a)=>n+api.accountBalanceMinor(f,a.id),0)));for(const a of list){const bt=button(c,'',()=>go('account',a.id),'lab-account');bt.append(el('span',a.name),el('strong',money(api.accountBalanceMinor(f,a.id))),el('span',a.onBudget?'Участвует в «Можно сегодня»':'Исключён из повседневных расчётов','lab-note'));}}
+    for(const b of groups){const list=f.accounts.filter(a=>(a.institutionId||null)===b.id&&!a.archived);if(!list.length&&b.id===null)continue;const c=card(b.name);row(c,'Итого',money(list.reduce((n,a)=>n+api.accountBalanceMinor(f,a.id),0)));if(b.id)editLink(c,'institutions',b.id,['accounts']);for(const a of list){const bt=button(c,'',()=>go('account',a.id),'lab-account');bt.append(el('span',a.name),el('strong',money(api.accountBalanceMinor(f,a.id))),el('span',a.onBudget?'Участвует в «Можно сегодня»':'Исключён из повседневных расчётов','lab-note'));}}
     const add=card('Добавить банк');const bankForm=form(add,'Добавить банк',()=>dispatch('addInstitution',{name:bankName.value},['accounts'])),bankName=field(bankForm.node,'Название банка');bankForm.finish();
     const c=card('Добавить счёт или наличные');const fm=form(c,'Сохранить счёт',()=>dispatch('addAccount',{type:type.value,institutionId:bank.value||null,name:name.value,openingBalanceMinor:minor(balance),onBudget:on.checked},['accounts']));
     const type=select(fm.node,'Тип',[['cash','Наличные'],['checking','Карта / текущий счёт'],['savings','Накопительный счёт'],['deposit','Вклад']]);const bank=select(fm.node,'Банк',[['','Выберите банк'],...f.institutions.map(b=>[b.id,b.name])]);bank.parentElement.hidden=true;
@@ -2589,51 +2786,88 @@ renderAll();
   function historyRows(parent,f,txs){
     if(!txs.length){note(parent,'Операций пока нет.');return;}
     for(const t of [...txs].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')))){
-      const e=el('article',null,'lab-history');const names={income:'Доход',expense:'Расход',transfer:'Перевод',adjustment:'Сверка',receivable_return:'Возврат долга'};
-      row(e,t.description||names[t.type],(t.type==='expense'?'−':t.type==='income'||t.type==='receivable_return'?'+':'')+money(t.type==='adjustment'?t.deltaMinor:t.amountMinor));
+      const e=el('article',null,'lab-history');const names={income:'Доход',expense:'Расход',transfer:'Перевод',adjustment:'Сверка',receivable_return:'Мне вернули долг',loan_received:'Получено в долг',loan_repayment:'Возврат моего долга'};
+      row(e,t.description||names[t.type],(['expense','loan_repayment'].includes(t.type)?'−':['income','receivable_return','loan_received'].includes(t.type)?'+':'')+money(t.type==='adjustment'?t.deltaMinor:t.amountMinor));
       const account=f.accounts.find(a=>a.id===t.accountId),category=f.categories.find(c=>c.id===t.categoryId);
       note(e,[t.date||'Дата неизвестна',names[t.type],category?.name,t.spendType?spendNames[t.spendType]:null,account?accountName(f,account):null].filter(Boolean).join(' · '));
       if(t.type==='transfer'){const from=f.accounts.find(a=>a.id===t.fromAccountId),to=f.accounts.find(a=>a.id===t.toAccountId);note(e,(from?accountName(f,from):'Счёт не указан')+' → '+(to?accountName(f,to):'Счёт не указан'));}
       if(t.affectsBalance===false)note(e,'История до стартового остатка. Повторно на баланс не влияет.');parent.append(e);
+      if(t.status==='void')note(e,'Отменено');else button(e,'Открыть операцию',()=>go('transactionDetail',t.id));
     }
+  }
+  function transactionDetail(f,id){back('history','all');const t=f.transactions.find(t=>t.id===id);if(!t)return go('history','all');const c=card(t.description||'Операция');row(c,dateLabel(t.date),money(t.type==='adjustment'?t.deltaMinor:t.amountMinor));if(t.status==='void'){note(c,'Операция отменена.');return;}if(!t.affectsBalance)note(c,'История до стартового остатка: изменения не меняют счета.');
+    if(['income','expense'].includes(t.type)&&!t.obligationId){const fm=form(c,'Сохранить операцию',()=>dispatch('changeTransaction',{transactionId:id,operation:'edit',amountMinor:minor(sum),description:desc.value,date:date.value,accountId:acc?.value,categoryId:category.value,spendType:spend?.value},['history','all'])),sum=amount(fm.node,'Сумма, ₽',String(t.amountMinor/100)),desc=field(fm.node,'Описание','text',t.description||''),date=field(fm.node,'Дата','date',t.date||today()),acc=t.affectsBalance?accountSelect(fm.node,f):null,category=select(fm.node,'Категория',f.categories.filter(c=>c.direction===t.type).map(c=>[c.id,c.name]),t.categoryId),spend=t.type==='expense'?select(fm.node,'Характер расхода',Object.entries(spendNames),t.spendType):null;if(acc)acc.value=t.accountId;date.max=today();fm.finish();}else note(c,'Чтобы исправить связанную операцию, отмените её и запишите заново.');
+    button(c,'Отменить операцию',()=>{if(confirm('Отменить операцию? Связанные остатки и статус платежа будут пересчитаны.'))dispatch('changeTransaction',{transactionId:id,operation:'void'},['history','all']);},'lab-wide');
   }
   function history(f,kind='all'){back();root.append(el('h3','История операций'));const bar=el('div',null,'lab-actions');root.append(bar);for(const[k,label]of [['all','Все'],['income','Доходы'],['expense','Расходы'],['transfer','Переводы']])button(bar,label,()=>go('history',k));historyRows(root,f,kind==='all'?f.transactions:f.transactions.filter(t=>t.type===kind));}
   function transfer(f,fromId){back();const c=card('Перевести между счетами');if(f.accounts.length<2){note(c,'Нужны два счёта.');button(c,'Добавить счёт',()=>go('accounts'));return;}const fm=form(c,'Перевести',()=>dispatch('moveMoney',{fromAccountId:from.value,toAccountId:to.value,amountMinor:minor(sum)},['transfer']));const from=accountSelect(fm.node,f,'Откуда'),to=accountSelect(fm.node,f,'Куда');if(fromId)from.value=fromId;to.value=f.accounts.find(a=>a.id!==from.value).id;const sum=amount(fm.node,'Сумма, ₽');note(fm.node,'Общая сумма денег не меняется. Доходом или расходом перевод не считается.');fm.finish();}
   function allocationList(f){
     back();root.append(el('h3','Накопления'));note(root,'Назначение уже существующих денег. Счета остаются прежними.');
+    button(root,'＋ Новое накопление',()=>go('newAllocation'),'lab-wide');
     for(const a of f.allocations.filter(a=>!a.archived)){const b=button(root,'',()=>go('allocation',a.id),'lab-account');b.append(el('span',a.name),el('strong',money(api.allocationAmountMinor(f,a.id))+(a.targetAmountMinor?' из '+money(a.targetAmountMinor):'')));}
+  }
+  function newAllocation(f){back('allocationList');
     const c=card('Создать');const fm=form(c,'Создать назначение',()=>dispatch('addAllocation',{name:name.value,type:type.value,targetAmountMinor:target.value.trim()?minor(target):0},['allocationList']));const options=f.allocations.some(a=>a.type==='buffer'&&!a.archived)?[['goal','Цель']]:[['buffer','Подушка'],['goal','Цель']];const type=select(fm.node,'Назначение',options),name=field(fm.node,'Название'),target=amount(fm.node,'Сколько нужно накопить, ₽ · необязательно');fm.finish();
   }
   function allocation(f,id){
     const a=f.allocations.find(a=>a.id===id);if(!a)return go('allocationList');back('allocationList');const c=card(a.name);row(c,'Назначено',money(api.allocationAmountMinor(f,id)));if(a.targetAmountMinor){const progress=el('progress');progress.max=a.targetAmountMinor;progress.value=api.allocationAmountMinor(f,id);c.append(progress);note(c,'Цель: '+money(a.targetAmountMinor));}
     const sources=new Map();for(const e of f.allocationEntries.filter(e=>e.allocationId===id&&e.status!=='void'))sources.set(e.sourceAccountId||'',(sources.get(e.sourceAccountId||'')||0)+e.deltaMinor);
     for(const[key,value]of sources)if(value){const acc=f.accounts.find(a=>a.id===key);row(c,acc?accountName(f,acc):'Повседневный пул',money(value));}
-    const fm=form(c,'Применить',()=>dispatch(mode.value==='assign'?'allocateMoney':'releaseMoney',{allocationId:id,sourceAccountId:source.value||null,amountMinor:minor(sum)},['allocation',id]));const mode=select(fm.node,'Действие',[['assign','Назначить деньги'],['release','Освободить деньги']]);const source=select(fm.node,'Источник',[['','Повседневный пул'],...f.accounts.filter(a=>!a.archived).map(a=>[a.id,accountName(f,a)])]);const sum=amount(fm.node,'Сумма, ₽');note(fm.node,'Назначение не переводит деньги между банками. Освобождайте их из того же источника, где они были назначены.');fm.finish();
+    const fm=form(c,'Применить',()=>dispatch(mode.value==='assign'?'allocateMoney':'releaseMoney',{allocationId:id,sourceAccountId:source.value||null,amountMinor:minor(sum)},['allocationList']));const mode=select(fm.node,'Действие',[['assign','Пополнить накопление'],['release','Вернуть в доступные деньги']]);const source=select(fm.node,'Источник',[['','Повседневный пул'],...f.accounts.filter(a=>!a.archived).map(a=>[a.id,accountName(f,a)])]);const sum=amount(fm.node,'Сумма, ₽');note(fm.node,'Счета не меняются. Вернуть деньги можно из того же источника, из которого пополняли.');fm.finish();
   }
+  function compact(parent,title,value,subtitle,action){const b=button(parent,'',action,'lab-compact');const labels=el('span');labels.append(el('strong',title),el('small',subtitle,'lab-note'));b.append(labels,el('b',money(value)+' ›'));}
+  function finished(parent,title,items,renderItem){if(!items.length)return;const details=el('details',null,'lab-finished');details.append(el('summary',title+' ('+items.length+')'));parent.append(details);items.forEach(x=>renderItem(details,x));}
   function obligations(f){
-    back();root.append(el('h3','Обязательства'));for(const o of f.obligations){const c=card(o.name);row(c,o.dueDate||'Срок неизвестен',money(o.amountMinor));if(o.status==='scheduled'){const fm=form(c,'Оплатить',()=>dispatch('payObligation',{obligationId:o.id,accountId:account.value},['obligations'])),account=accountSelect(fm.node,f,'Счёт оплаты');fm.finish();}else note(c,o.status==='paid'?'Оплачено':'Отменено');}
+    back();root.append(el('h3','Обязательства'));button(root,'＋ Новый платёж',()=>go('newObligation'),'lab-wide');
+    button(root,'Мои долги',()=>go('payables'),'lab-wide');
+    const draw=(p,o)=>compact(p,o.name,o.amountMinor,dateLabel(o.dueDate)+(o.status==='paid'?' · Оплачено':o.status==='cancelled'?' · Отменено':''),()=>go('obligation',o.id));
+    const pending=f.obligations.filter(o=>o.status==='scheduled').sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||''));pending.forEach(o=>draw(root,o));if(!pending.length)note(root,'Предстоящих платежей нет.');
+    finished(root,'Завершённые',f.obligations.filter(o=>o.status!=='scheduled'),draw);
+  }
+  function obligation(f,id){back('obligations');const o=f.obligations.find(o=>o.id===id);if(!o)return go('obligations');const c=card(o.name);row(c,dateLabel(o.dueDate),money(o.amountMinor));if(o.status!=='scheduled'){note(c,o.status==='paid'?'Оплачено':'Отменено');return;}const fm=form(c,'Оплатить',()=>dispatch('payObligation',{obligationId:id,accountId:account.value},['obligations'])),account=accountSelect(fm.node,f,'Счёт оплаты');note(fm.node,'Оплата будет записана как расход с выбранного счёта.');fm.finish();}
+  function newObligation(f){back('obligations');
     const c=card('Новый платёж');const fm=form(c,'Добавить обязательство',()=>dispatch('addObligation',{name:name.value,amountMinor:minor(sum),dueDate:date.value},['obligations']));const name=field(fm.node,'Название'),sum=amount(fm.node,'Сумма, ₽'),date=field(fm.node,'Срок','date',today());note(fm.node,'Расход появится только после оплаты.');fm.finish();
   }
   function receivables(f){
-    back();root.append(el('h3','Мне должны'));for(const r of f.receivables){const c=card(r.name);row(c,'Осталось вернуть',money(r.remainingAmountMinor));if(r.status==='open'){const fm=form(c,'Получить возврат',()=>dispatch('receiveReceivable',{receivableId:r.id,accountId:account.value,amountMinor:minor(sum)},['receivables']));const account=accountSelect(fm.node,f,'Куда поступили деньги'),sum=amount(fm.node,'Сумма возврата, ₽',String(r.remainingAmountMinor/100));fm.finish();}else note(c,'Долг возвращён.');}
-    const c=card('Записать существующий долг');const fm=form(c,'Добавить долг',()=>dispatch('addReceivable',{name:name.value,amountMinor:minor(sum)},['receivables'])),name=field(fm.node,'Кто / описание'),sum=amount(fm.node,'Сумма, ₽');note(fm.node,'Запись не списывает деньги со счёта. Возврат увеличивает счёт, но не доход месяца.');fm.finish();
+    back();root.append(el('h3','Мне должны'));button(root,'＋ Записать долг',()=>go('newReceivable'),'lab-wide');
+    const draw=(p,r)=>compact(p,r.name,r.remainingAmountMinor,r.status==='open'?dateLabel(r.dueDate):'Возвращён',()=>go('receivable',r.id));
+    f.receivables.filter(r=>r.status==='open').forEach(r=>draw(root,r));finished(root,'Возвращённые',f.receivables.filter(r=>r.status!=='open'),draw);
+  }
+  function receivable(f,id){back('receivables');const r=f.receivables.find(r=>r.id===id);if(!r)return go('receivables');const c=card(r.name);row(c,'Осталось вернуть',money(r.remainingAmountMinor));if(r.status!=='open'){note(c,'Долг возвращён.');return;}const fm=form(c,'Получить возврат',()=>dispatch('receiveReceivable',{receivableId:id,accountId:account.value,amountMinor:minor(sum)},['receivables']));const account=accountSelect(fm.node,f,'Куда поступили деньги'),sum=amount(fm.node,'Сумма возврата, ₽',String(r.remainingAmountMinor/100));note(fm.node,'Можно вернуть часть долга. Возврат увеличивает счёт, но не доход месяца.');fm.finish();}
+  function newReceivable(f){back('receivables');const c=card('Записать существующий долг');const fm=form(c,'Добавить долг',()=>dispatch('addReceivable',{name:name.value,amountMinor:minor(sum),dueDate:due.value},['receivables'])),name=field(fm.node,'Кто / описание'),sum=amount(fm.node,'Сумма, ₽'),due=field(fm.node,'Срок · необязательно','date');note(fm.node,'Запись не списывает деньги со счёта. Возврат увеличивает счёт, но не доход месяца.');fm.finish();}
+  function payables(f){back();root.append(el('h3','Я должен'));button(root,'＋ Добавить мой долг',()=>go('newPayable'),'lab-wide');note(root,'Остаток долга показан отдельно и не вычитается из «Можно сегодня». Деньги уменьшаются при возврате.');const draw=(p,d)=>compact(p,d.name,d.remainingAmountMinor,d.status==='open'?dateLabel(d.dueDate):'Погашен',()=>go('payable',d.id));const ds=f.payables||[];ds.filter(d=>d.status==='open').forEach(d=>draw(root,d));finished(root,'Погашенные',ds.filter(d=>d.status!=='open'),draw);}
+  function newPayable(f){back('payables');const c=card('Мой долг');const fm=form(c,'Сохранить долг',()=>dispatch('addPayable',{mode:mode.value,name:name.value,amountMinor:minor(sum),accountId:account.value,dueDate:due.value},['payables']));const mode=select(fm.node,'Что произошло',[['existing','Записываю существующий долг'],['received','Сейчас получил деньги в долг']]),name=field(fm.node,'Кому должен'),sum=amount(fm.node,'Сумма, ₽'),account=accountSelect(fm.node,f,'Куда поступили деньги'),due=field(fm.node,'Срок · необязательно','date');const help=el('p',null,'lab-note');fm.node.append(help);const change=()=>{account.parentElement.hidden=mode.value==='existing';help.textContent=mode.value==='existing'?'Запись не меняет остатки и дневной лимит.':'Поступление увеличит счёт и появится в истории как «Получено в долг». Доход месяца не изменится. Если счёт участвует в повседневном расчёте, увеличится и «Можно сегодня».';};mode.onchange=change;change();fm.finish();}
+  function payable(f,id){back('payables');const d=(f.payables||[]).find(d=>d.id===id);if(!d)return go('payables');const c=card(d.name);row(c,'Я должен',money(d.remainingAmountMinor));note(c,dateLabel(d.dueDate));if(d.status!=='open'){note(c,'Долг погашен.');return;}const fm=form(c,'Вернуть долг',()=>dispatch('repayPayable',{payableId:id,accountId:account.value,amountMinor:minor(sum)},['payables'])),account=accountSelect(fm.node,f,'Откуда возвращаю'),sum=amount(fm.node,'Сумма возврата, ₽',String(d.remainingAmountMinor/100));note(fm.node,'Полный или частичный возврат уменьшит счёт и долг. Проценты, если есть, запишите отдельно как расход.');fm.finish();}
+  function reminders(f){back();root.append(el('h3','Напоминания'));const items=api.paymentReminders(f,today());if(!items.length)note(root,'На ближайшие три дня напоминаний нет.');for(const a of items)compact(root,a.name,a.amountMinor,({overdue:'Просрочено',today:'Сегодня',soon:'Скоро'})[a.urgency]+' · '+dateLabel(a.dueDate)+' · '+({obligation:'Платёж',payable:'Я должен',receivable:'Мне должны'})[a.route],()=>go(a.route,a.id));}
+  function incomeDate(f){back();const c=card('Дата следующего дохода'),fm=form(c,'Сохранить дату',()=>dispatch('setNextIncomeDate',{date:date.value},['home'])),date=field(fm.node,'Когда ожидается доход','date',f.settings.nextIncomeDate||'');fm.finish();
   }
   function analytics(f,mode){back();const s=service.snapshot(f,today());if(mode==='daily'){const c=card('Как рассчитано «Можно сегодня»');row(c,'Все счета',money(s.total));row(c,'Из них участвуют в расчёте',money(s.onBudget));row(c,'Защищено в этом пуле',money(api.allocatedMinor(f,{onBudgetOnly:true})));row(c,'Свободно до обязательств',money(s.free));if(s.daily.obligationsMinor!=null)row(c,'Платежи до следующего дохода',money(s.daily.obligationsMinor));if(s.daily.days)row(c,'Дней до дохода',String(s.daily.days));row(c,'В день',s.daily.valueMinor==null?'Нужно уточнить данные':money(s.daily.valueMinor));note(c,'Из повседневных денег вычитаются назначения и предстоящие обязательства. Остаток делится на дни до дохода; отрицательный результат показывается как 0 ₽.');button(c,'Изменить дату дохода',()=>go('settings'));return;}
-    const c=card('Месяц · '+today().slice(0,7));row(c,'Доходы',money(s.month.incomeMinor));row(c,'Расходы',money(s.month.expenseMinor));row(c,'Доходы минус расходы',money(s.month.netMinor));note(c,'Разница за месяц не равна текущему остатку на счетах.');for(const[id,sum]of Object.entries(s.month.byCategoryMinor))row(c,f.categories.find(x=>x.id===id)?.name||id,money(sum));button(c,'История операций',()=>go('history','all'),'lab-wide');
+    const c=card(new Date(today()+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}));row(c,'Доходы',money(s.month.incomeMinor));row(c,'Расходы',money(s.month.expenseMinor));row(c,'Баланс месяца',money(s.month.netMinor));note(c,'Доходы минус расходы за месяц. Это не остаток на счетах.');row(c,'Средний расход в день',money(Math.round(s.month.expenseMinor/Number(today().slice(-2)))));note(c,'Среднее за прошедшие календарные дни месяца.');for(const[id,sum]of Object.entries(s.month.byCategoryMinor))row(c,f.categories.find(x=>x.id===id)?.name||id,money(sum));const character=card('Характер расходов');for(const[key,sum]of Object.entries(s.month.bySpendTypeMinor))row(character,spendNames[key]||key,money(sum));const debt=card('Движение долгов');for(const[type,label]of [['loan_received','Получено в долг'],['loan_repayment','Возвращено мной'],['receivable_return','Мне вернули']])row(debt,label,money(f.transactions.filter(t=>t.type===type&&t.status!=='void'&&t.date?.startsWith(today().slice(0,7))&&t.date<=today()).reduce((n,t)=>n+t.amountMinor,0)));note(debt,'Показано отдельно от доходов и расходов месяца.');button(debt,'История операций',()=>go('history','all'),'lab-wide');
   }
-  function challenges(f){back();root.append(el('h3','Сохранённые челленджи'));note(root,'Данные сохранены. Создание и проверка выполнения будут подключены отдельно; здесь показаны исходные записи.');for(const c of f.challenges){const box=card(c.name||'Челлендж');note(box,(c.startDate||'')+' — '+(c.endDate||''));if(c.amountLimit)row(box,'Лимит',money(api.rublesToMinor(c.amountLimit)));}if(!f.challenges.length)note(root,'Челленджей пока нет.');}
+  function challenges(f){back();root.append(el('h3','Челленджи'));const create=el('details');create.append(el('summary','＋ Новый челлендж'));root.append(create);const fm=form(create,'Создать челлендж',()=>dispatch('addChallenge',{name:name.value,type:type.value,startDate:start.value,endDate:end.value,amountLimitMinor:type.value==='budget'?minor(limit):0,categoryId:category.value},['challenges'])),name=field(fm.node,'Название'),type=select(fm.node,'Правило',[['budget','Расходы в пределах лимита'],['category_free','Без расходов в категории']]),start=field(fm.node,'С','date',today()),end=field(fm.node,'По','date',today()),limit=amount(fm.node,'Лимит, ₽'),category=select(fm.node,'Категория',f.categories.filter(c=>c.direction==='expense').map(c=>[c.id,c.name]));const change=()=>{limit.parentElement.hidden=type.value!=='budget';category.parentElement.hidden=type.value!=='category_free';};type.onchange=change;change();fm.finish();note(root,'Прогресс считается по расходам. Переводы, накопления и движение основного долга его не меняют.');for(const c of f.challenges||[]){const box=card(c.name||'Челлендж');note(box,dateLabel(c.startDate)+' — '+dateLabel(c.endDate));const p=api.challengeProgress(f,c,today());note(box,({active:'В процессе',upcoming:'Начнётся позже',exceeded:'Условие нарушено',completed:'Выполнен',cancelled:'Отменён',unsupported:'Сохранено исходное правило; автоматическая проверка пока недоступна'})[p.status]);if(p.expenseMinor!==undefined){row(box,'Потрачено',money(p.expenseMinor));if(c.type==='budget')row(box,'Лимит',money(p.limitMinor));}}}
   function settings(f){
-    back();const c=card('Дата следующего дохода'),fm=form(c,'Сохранить дату',()=>dispatch('setNextIncomeDate',{date:date.value},['home'])),date=field(fm.node,'Когда ожидается доход','date',f.settings.nextIncomeDate||'');fm.finish();
+    back();root.append(el('h3','Настройки теста'));button(root,'Дата следующего дохода',()=>go('incomeDate'),'lab-wide');
+    const reminderCard=card('Напоминания');const enabled=check(reminderCard,'Показывать при открытии',f.settings.remindersEnabled!==false);enabled.onchange=()=>{try{dispatch('setReminderPreferences',{enabled:enabled.checked},['settings']);}catch(e){enabled.checked=!enabled.checked;error(e);}};note(reminderCard,'Просроченные, сегодняшние и ближайшие три дня. Системные уведомления iPhone пока не подключены.');button(reminderCard,'Посмотреть напоминания',()=>go('reminders'),'lab-wide');
     const tools=card('Тестовые данные');note(tools,'Рабочая копия KSTM хранится отдельно. Очистка ниже затрагивает только эту тестовую среду.');
     button(tools,'Скачать копию теста',()=>{const blob=new Blob([JSON.stringify({format:'KSTM_FINANCE_TEST',finance:store.getState()},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),link=el('a');link.href=url;link.download='KSTM-Finance-test-'+today()+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+    const file=el('input');file.type='file';file.accept='.json,application/json';file.hidden=true;tools.append(file);button(tools,'Восстановить копию теста',()=>file.click(),'lab-wide');
+    file.onchange=async()=>{const selected=file.files?.[0];file.value='';if(!selected)return;const request=++readRequest;try{if(selected.size>20*1024*1024)throw new Error('Копия больше 20 МБ.');const input=JSON.parse(await selected.text());if(request!==readRequest||!dialog.open)return;if(input.format!=='KSTM_FINANCE_TEST')throw new Error('Выберите копию теста Finance.');const validation=api.validateFinanceV16(input.finance);if(!validation.valid)throw new Error(validation.errors.join('; '));if(localStorage.getItem(KEY)!==token)throw new Error('Данные изменились в другой вкладке. Откройте тест заново.');root.replaceChildren();back('settings');const c=card('Восстановление теста');row(c,'Счета',String(input.finance.accounts.length));row(c,'Деньги',money(api.totalCashMinor(input.finance)));note(c,'Эта копия заменит текущий тест. Рабочие данные KSTM останутся прежними.');button(c,'Заменить тест этой копией',()=>{if(localStorage.getItem(KEY)!==token)throw new Error('Тест изменился. Откройте его заново.');start(input.finance);},'lab-wide');}catch(e){error(e);}};
     button(tools,'Очистить только тест Finance 1.0',()=>{if(!confirm('Очистить только тестовую среду Finance 1.0? Рабочие данные KSTM останутся.'))return;localStorage.removeItem(KEY);token=null;store=null;readRequest++;render();});
   }
   function open(){
     readRequest++;message.textContent='';store=null;transactionDraft=null;currentRoute=['home'];dialog.showModal();
-    try{token=localStorage.getItem(KEY);if(token){const saved=JSON.parse(token);if(saved.format!=='KSTM_FINANCE_TEST')throw new Error('Формат тестовых данных неизвестен.');attach(saved.finance);}render();}
+    try{token=localStorage.getItem(KEY);if(token){const saved=JSON.parse(token);if(saved.format!=='KSTM_FINANCE_TEST')throw new Error('Формат тестовых данных неизвестен.');attach(saved.finance);}render();dialog.scrollTop=0;emit('opened');}
     catch(e){root.replaceChildren();error(new Error('Не удалось открыть сохранённый тест: '+e.message));button(root,'Удалить повреждённую тестовую копию',()=>{if(confirm('Удалить только сохранённый тест Finance1.0?')){localStorage.removeItem(KEY);token=null;store=null;render();}});}
   }
-  document.getElementById('financeLabClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{readRequest++;});
+  document.getElementById('financeLabClose').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{readRequest++;emit('closed');});
+  // UI adapters (planets, 3D, voice, advisor) consume copies and route requests.
+  // No public write/dispatch: a proposed operation is confirmed in our own form.
+  globalThis.KSTMFinanceTest=Object.freeze({version:1,open,close:()=>dialog.close(),
+    snapshot:()=>store?store.getState():null,
+    subscribe(fn){if(typeof fn!=='function')throw new Error('Ожидается обработчик.');hooks.add(fn);return()=>hooks.delete(fn);},
+    navigate(name){if(!['home','accounts','allocationList','obligations','receivables','payables','history','analytics','reminders','settings','challenges'].includes(name))throw new Error('Недоступный маршрут.');if(!dialog.open)open();if(store)go(name);},
+    proposeTransaction(proposal){if(!['income','expense'].includes(proposal?.type))throw new Error('Поддерживается предложение дохода или расхода.');if(!dialog.open)open();if(!store)throw new Error('Сначала создайте тест.');const p=JSON.parse(JSON.stringify(proposal));transactionDraft={kind:p.type,sum:Number.isSafeInteger(p.amountMinor)&&p.amountMinor>0?String(p.amountMinor/100):'',account:String(p.accountId||''),category:String(p.categoryId||''),spend:String(p.spendType||''),description:String(p.description||'').slice(0,160),date:today()};go('transaction',p.type);ok('Предложение заполнено. Проверьте поля и подтвердите сохранение.');}
+  });
   for(const parent of [document.getElementById('finance-panel-overview'),document.getElementById('dataSafetyHint')?.parentElement])if(parent)button(parent,'Открыть тест Finance 1.0',open,'fa-launch');
   // A test export deliberately differs from an ordinary KSTM backup; only this
   // screen accepts it. It must never pass through the old application's importer.
