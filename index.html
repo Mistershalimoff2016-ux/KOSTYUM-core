@@ -731,7 +731,13 @@ renderAll();
 #financeLab .lab-finished{margin:16px 0}#financeLab .lab-finished>summary{color:#afc1c9}#financeLab .lab-alert button{border-color:#d5b875;color:#ffe0a0}
 #financeLab input[type=date]{display:block;width:100%;min-width:0;max-width:100%;appearance:none;-webkit-appearance:none;text-align:left}#financeLab input::-webkit-date-and-time-value{text-align:left;min-height:1.5em}
 #financeLab .lab-number{font-size:32px}#financeLab .lab-grid{margin:10px 0}#financeLab .lab-summary b{font-size:20px}
-@media(max-width:370px){#financeLab .lab-compact{flex-wrap:wrap}#financeLab .lab-summary b{font-size:18px}}
+#financeLab .lab-section-title{font-size:15px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9fb3ba;margin:18px 2px 8px}
+#financeLab .lab-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}#financeLab .lab-quick button{padding:10px 7px;font-size:15px}
+#financeLab .lab-month{cursor:pointer}#financeLab .lab-month-main{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:4px 0 12px}#financeLab .lab-month-main b{font-size:26px}#financeLab .lab-month-main span{color:var(--lab-muted);font-size:14px}
+#financeLab .lab-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#financeLab .lab-metric{padding:9px;border:1px solid #294b56;border-radius:11px;background:#0d1c22;min-width:0}#financeLab .lab-metric span{display:block;color:var(--lab-muted);font-size:12px;margin-bottom:4px}#financeLab .lab-metric b{font-size:15px;overflow-wrap:anywhere}
+#financeLab .lab-saving-row{display:block;width:100%;text-align:left;margin:8px 0;padding:10px 12px}#financeLab .lab-saving-head{display:flex;justify-content:space-between;gap:12px;align-items:center}#financeLab .lab-saving-head b{flex-shrink:0}#financeLab .lab-saving-row progress{height:7px;margin-top:8px}
+#financeLab .lab-bottom-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}#financeLab .lab-bottom-nav button{padding:10px 6px;font-size:14px}
+@media(max-width:370px){#financeLab .lab-compact{flex-wrap:wrap}#financeLab .lab-summary b{font-size:18px}#financeLab .lab-quick,#financeLab .lab-bottom-nav{grid-template-columns:1fr}#financeLab .lab-metrics{grid-template-columns:1fr}}
 </style>
 <script>
 (function (root, factory) {
@@ -2797,7 +2803,7 @@ renderAll();
   function dispatch(action,input,route){const previous=currentRoute;if(route)currentRoute=route;try{store.dispatch(action,input);}catch(e){currentRoute=previous;throw e;}dialog.scrollTop=0;ok('Сохранено в тестовой среде.');emit('changed',{action});emit('route',{route:currentRoute});}
   function go(name,arg){currentRoute=[name,arg];message.textContent='';render();dialog.scrollTop=0;emit('route',{route:currentRoute});}
   function back(name='home',arg){const bar=el('nav',null,'lab-nav');button(bar,'‹ Назад',()=>go(name,arg));if(name!=='home')button(bar,'На главную',()=>go('home'));root.append(bar);}
-  function render(){root.replaceChildren();if(!store){welcome();return;}const f=store.getState();const[name,arg]=currentRoute;const routes={home,accounts,account,transaction,transactionDetail,history,transfer,allocationList,allocation,newAllocation,obligations,obligation,newObligation,receivables,receivable,newReceivable,payables,payable,newPayable,reminders,incomeDate,manage,analytics,settings,challenges};(routes[name]||home)(f,arg);const managers={account:['accounts','accounts'],allocation:['allocations','allocationList'],obligation:['obligations','obligations'],receivable:['receivables','receivables'],payable:['payables','payables']};if(managers[name]&&currentRoute[0]===name){const[collection,list]=managers[name];button(root.children[0],'Изменить',()=>go('manage',{collection,id:arg,returnRoute:[list]}));}}
+  function render(){root.replaceChildren();if(!store){welcome();return;}const f=store.getState();const[name,arg]=currentRoute;const routes={home,debts,accounts,account,transaction,transactionDetail,history,transfer,allocationList,allocation,newAllocation,obligations,obligation,newObligation,receivables,receivable,newReceivable,payables,payable,newPayable,reminders,incomeDate,manage,analytics,settings,challenges};(routes[name]||home)(f,arg);const managers={account:['accounts','accounts'],allocation:['allocations','allocationList'],obligation:['obligations','obligations'],receivable:['receivables','receivables'],payable:['payables','payables']};if(managers[name]&&currentRoute[0]===name){const[collection,list]=managers[name];button(root.children[0],'Изменить',()=>go('manage',{collection,id:arg,returnRoute:[list]}));}}
   function editLink(parent,collection,id,returnRoute){button(parent,'Изменить запись',()=>go('manage',{collection,id,returnRoute}),'lab-wide');}
   function manage(f,context){const{collection,id,returnRoute}=context;back(...returnRoute);const record=(f[collection]||[]).find(r=>r.id===id);if(!record)return go(...returnRoute);const c=card('Изменить запись');const fm=form(c,'Сохранить изменения',()=>{const changes={name:name.value};if(onBudget)changes.onBudget=onBudget.checked;if(target)changes.targetAmountMinor=target.value.trim()?minor(target):0;if(due)changes.dueDate=due.value;if(sum)changes.amountMinor=minor(sum);dispatch('manageRecord',{collection,id,operation:'edit',changes},returnRoute);}),name=field(fm.node,'Название','text',record.name);const onBudget=collection==='accounts'?check(fm.node,'Учитывать в «Можно сегодня»',record.onBudget):null,target=collection==='allocations'?amount(fm.node,'Цель, ₽',String(record.targetAmountMinor/100)):null,due=['obligations','receivables','payables'].includes(collection)?field(fm.node,'Срок','date',record.dueDate||''):null,sum=collection==='obligations'&&record.status==='scheduled'?amount(fm.node,'Сумма, ₽',String(record.amountMinor/100)):null;fm.finish();
     if(['accounts','allocations'].includes(collection))button(c,'Закрыть с сохранением истории',()=>dispatch('manageRecord',{collection,id,operation:'archive'},returnRoute),'lab-wide');
@@ -2833,14 +2839,33 @@ renderAll();
     const alerts=api.paymentReminders(f,today());if(alerts.length){const bar=el('div',null,'lab-alert');button(bar,'Напоминания: '+alerts.length+' · '+(alerts.some(a=>a.urgency==='overdue')?'есть просроченные':'ближайшие платежи'),()=>go('reminders'),'lab-wide');root.append(bar);}
     const s=service.snapshot(f,today()),c=card('Можно сегодня');c.append(el('div',s.daily.valueMinor==null?'—':(s.daily.valueMinor/100).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽','lab-number'));
     const reasons={next_income_date_missing:'Укажите дату следующего дохода.',next_income_date_not_future:'Обновите дату следующего дохода.',obligation_date_unknown:'Нужно уточнить срок обязательства.',allocation_funding_shortfall:'Назначенные деньги не обеспечены остатком счёта. Проверьте накопления.'};
-    note(c,reasons[s.daily.reason]||(s.daily.poolMinor<0?'На обязательства не хватает '+money(-s.daily.poolMinor)+'.':'Верхняя граница на день до '+dateLabel(f.settings.nextIncomeDate)+'. Это не цель для трат.'));
-    button(c,'Как рассчитано',()=>go('analytics','daily'));button(c,'Дата дохода',()=>go('incomeDate'));
-    const grid=el('div',null,'lab-grid');root.append(grid);
-    for(const[label,value,route]of [['Деньги',s.total,'accounts'],['Накопления',s.allocated,'allocationList'],['Обязательства',api.obligationsDueMinor(f,'9999-12-31'),'obligations'],['Мне должны',s.receivables,'receivables']]){const b=button(grid,'',()=>go(route),'lab-summary');b.append(el('span',label),el('b',money(value)));}
-    const debts=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0);button(root,'Я должен · '+money(debts),()=>go('payables'),'lab-wide');
-    const actions=el('div',null,'lab-grid');root.append(actions);button(actions,'＋ Доход',()=>go('transaction','income'));button(actions,'− Расход',()=>go('transaction','expense'));button(actions,'Перевести',()=>go('transfer'));button(actions,'История',()=>go('history','all'));
-    const links=el('div',null,'lab-actions');root.append(links);button(links,'Месяц',()=>go('analytics'));button(links,'Челленджи ('+f.challenges.length+')',()=>go('challenges'));
-    note(root,'Управление тестом и его копией — в настройках.');button(root,'Настройки теста',()=>go('settings'));
+    note(c,reasons[s.daily.reason]||(s.daily.poolMinor<0?'На обязательства не хватает '+money(-s.daily.poolMinor)+'.':'Верхняя безопасная граница на день до '+dateLabel(f.settings.nextIncomeDate)+'. Это не цель для трат.'));
+    const dailyActions=el('div',null,'lab-inline');c.append(dailyActions);button(dailyActions,'Как рассчитано',()=>go('analytics','daily'));button(dailyActions,'Дата дохода',()=>go('incomeDate'));
+
+    root.append(el('div','Финансовое состояние','lab-section-title'));
+    const debts=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0),grid=el('div',null,'lab-grid');root.append(grid);
+    for(const[label,value,route]of [['Деньги',s.total,'accounts'],['Накопления',s.allocated,'allocationList'],['Обязательства',api.obligationsDueMinor(f,'9999-12-31'),'obligations']]){const b=button(grid,'',()=>go(route),'lab-summary');b.append(el('span',label),el('b',money(value)));}
+    const debtButton=button(grid,'',()=>go('debts'),'lab-summary');debtButton.append(el('span','Долги'),el('b','Мне '+money(s.receivables)+' · Я '+money(debts)));
+
+    root.append(el('div','Быстрые действия','lab-section-title'));
+    const actions=el('div',null,'lab-quick');root.append(actions);button(actions,'− Расход',()=>go('transaction','expense'));button(actions,'＋ Доход',()=>go('transaction','income'));button(actions,'↔ Перевод',()=>go('transfer'));
+
+    root.append(el('div','Этот месяц','lab-section-title'));
+    const monthName=new Intl.DateTimeFormat('ru-RU',{month:'long'}).format(new Date(today()+'T12:00:00')),month=card(monthName.charAt(0).toUpperCase()+monthName.slice(1)+' · обзор'),elapsed=Math.max(1,Number(today().slice(-2))),pace=Math.round((s.month.paceExpenseMinor||0)/elapsed),monthMain=el('div',null,'lab-month-main');month.classList.add('lab-month');monthMain.append(el('b',money(s.month.expenseMinor)),el('span','расходы месяца'));month.append(monthMain);
+    const metrics=el('div',null,'lab-metrics');for(const[label,value]of [['Темп',money(pace)+'/день'],['Доходы',money(s.month.incomeMinor)],['Баланс',money(s.month.netMinor)]]){const item=el('div',null,'lab-metric');item.append(el('span',label),el('b',value));metrics.append(item);}month.append(metrics);button(month,'Открыть аналитику',()=>go('analytics'),'lab-wide');
+
+    const pending=f.obligations.filter(o=>o.status==='scheduled').sort((a,b)=>(a.dueDate||'9999-12-31').localeCompare(b.dueDate||'9999-12-31'));
+    if(pending.length){root.append(el('div','Ближайшее обязательство','lab-section-title'));const o=pending[0],upcoming=card(o.name);row(upcoming,o.dueDate?dateLabel(o.dueDate):'Срок не указан',money(o.amountMinor));button(upcoming,'Все обязательства',()=>go('obligations'),'lab-wide');}
+
+    const allocations=f.allocations.filter(a=>!a.archived&&!a.system).slice(0,3);
+    if(allocations.length){root.append(el('div','Накопления','lab-section-title'));const savings=card('Активные цели');for(const a of allocations){const value=api.allocationAmountMinor(f,a.id),b=button(savings,'',()=>go('allocation',a.id),'lab-saving-row'),head=el('div',null,'lab-saving-head');head.append(el('span',a.name),el('b',money(value)));b.append(head);if(a.targetAmountMinor){const progress=el('progress');progress.max=a.targetAmountMinor;progress.value=value;b.append(progress);}}button(savings,'Все накопления',()=>go('allocationList'),'lab-wide');}
+
+    root.append(el('div','Разделы','lab-section-title'));const links=el('div',null,'lab-bottom-nav');root.append(links);button(links,'Операции',()=>go('history','all'));button(links,'Счета',()=>go('accounts'));button(links,'Челленджи'+(f.challenges.length?' · '+f.challenges.length:''),()=>go('challenges'));
+    button(root,'Настройки теста',()=>go('settings'),'lab-wide');
+  }
+  function debts(f){
+    back();root.append(el('h3','Долги'));const mine=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0),owed=f.receivables.reduce((n,d)=>n+d.remainingAmountMinor,0);
+    const c=card('Обзор');row(c,'Мне должны',money(owed));row(c,'Я должен',money(mine));button(c,'Открыть «Мне должны»',()=>go('receivables'),'lab-wide');button(c,'Открыть «Я должен»',()=>go('payables'),'lab-wide');
   }
   function accounts(f){
     back();root.append(el('h3','Деньги'));note(root,'Сумма по этим счетам — единственный общий остаток.');
@@ -2973,7 +2998,7 @@ renderAll();
   globalThis.KSTMFinanceTest=Object.freeze({version:1,open,close:()=>dialog.close(),
     snapshot:()=>store?store.getState():null,
     subscribe(fn){if(typeof fn!=='function')throw new Error('Ожидается обработчик.');hooks.add(fn);return()=>hooks.delete(fn);},
-    navigate(name){if(!['home','accounts','allocationList','obligations','receivables','payables','history','analytics','reminders','settings','challenges'].includes(name))throw new Error('Недоступный маршрут.');if(!dialog.open)open();if(store)go(name);},
+    navigate(name){if(!['home','debts','accounts','allocationList','obligations','receivables','payables','history','analytics','reminders','settings','challenges'].includes(name))throw new Error('Недоступный маршрут.');if(!dialog.open)open();if(store)go(name);},
     proposeTransaction(proposal){if(!['income','expense'].includes(proposal?.type))throw new Error('Поддерживается предложение дохода или расхода.');if(!dialog.open)open();if(!store)throw new Error('Сначала создайте тест.');const p=JSON.parse(JSON.stringify(proposal));transactionDraft={kind:p.type,sum:Number.isSafeInteger(p.amountMinor)&&p.amountMinor>0?String(p.amountMinor/100):'',account:String(p.accountId||''),category:String(p.categoryId||''),spend:String(p.spendType||''),description:String(p.description||'').slice(0,160),date:today()};go('transaction',p.type);ok('Предложение заполнено. Проверьте поля и подтвердите сохранение.');}
   });
   for(const parent of [document.getElementById('finance-panel-overview'),document.getElementById('dataSafetyHint')?.parentElement])if(parent)button(parent,'Открыть тест Finance 1.0',open,'fa-launch');
