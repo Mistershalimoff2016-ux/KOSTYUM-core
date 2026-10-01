@@ -731,13 +731,18 @@ renderAll();
 #financeLab .lab-finished{margin:16px 0}#financeLab .lab-finished>summary{color:#afc1c9}#financeLab .lab-alert button{border-color:#d5b875;color:#ffe0a0}
 #financeLab input[type=date]{display:block;width:100%;min-width:0;max-width:100%;appearance:none;-webkit-appearance:none;text-align:left}#financeLab input::-webkit-date-and-time-value{text-align:left;min-height:1.5em}
 #financeLab .lab-number{font-size:32px}#financeLab .lab-grid{margin:10px 0}#financeLab .lab-summary b{font-size:20px}
-#financeLab .lab-section-title{font-size:15px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9fb3ba;margin:18px 2px 8px}
-#financeLab .lab-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}#financeLab .lab-quick button{padding:10px 7px;font-size:15px}
-#financeLab .lab-month{cursor:pointer}#financeLab .lab-month-main{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:4px 0 12px}#financeLab .lab-month-main b{font-size:26px}#financeLab .lab-month-main span{color:var(--lab-muted);font-size:14px}
-#financeLab .lab-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#financeLab .lab-metric{padding:9px;border:1px solid #294b56;border-radius:11px;background:#0d1c22;min-width:0}#financeLab .lab-metric span{display:block;color:var(--lab-muted);font-size:12px;margin-bottom:4px}#financeLab .lab-metric b{font-size:15px;overflow-wrap:anywhere}
-#financeLab .lab-saving-row{display:block;width:100%;text-align:left;margin:8px 0;padding:10px 12px}#financeLab .lab-saving-head{display:flex;justify-content:space-between;gap:12px;align-items:center}#financeLab .lab-saving-head b{flex-shrink:0}#financeLab .lab-saving-row progress{height:7px;margin-top:8px}
-#financeLab .lab-bottom-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}#financeLab .lab-bottom-nav button{padding:10px 6px;font-size:14px}
-@media(max-width:370px){#financeLab .lab-compact{flex-wrap:wrap}#financeLab .lab-summary b{font-size:18px}#financeLab .lab-quick,#financeLab .lab-bottom-nav{grid-template-columns:1fr}#financeLab .lab-metrics{grid-template-columns:1fr}}
+#financeLab .lab-section-title{font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#9fb3ba;margin:14px 2px 6px}
+#financeLab .lab-home-state{gap:8px;margin:6px 0}#financeLab .lab-home-state .lab-summary{min-height:82px;padding:10px 12px;justify-content:space-between}#financeLab .lab-home-state .lab-summary b{font-size:19px;line-height:1.2}
+#financeLab .lab-debt-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}#financeLab .lab-debt-pair small{display:block;color:var(--lab-muted);font-size:11px;margin-bottom:2px}#financeLab .lab-debt-pair strong{font-size:16px;white-space:nowrap}
+#financeLab .lab-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:6px 0}#financeLab .lab-quick button{padding:9px 6px;font-size:14px;min-height:42px}
+#financeLab .lab-home-card{padding:12px 13px;margin:7px 0;border-radius:14px}#financeLab .lab-home-card h3{font-size:17px;margin:2px 0 8px}
+#financeLab .lab-month{cursor:pointer}#financeLab .lab-month-main{display:flex;align-items:end;justify-content:space-between;gap:10px;margin:2px 0 9px}#financeLab .lab-month-main b{font-size:24px}#financeLab .lab-month-main span{color:var(--lab-muted);font-size:13px}
+#financeLab .lab-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#financeLab .lab-metric{padding:7px 8px;border:1px solid #294b56;border-radius:10px;background:#0d1c22;min-width:0}#financeLab .lab-metric span{display:block;color:var(--lab-muted);font-size:11px;margin-bottom:3px}#financeLab .lab-metric b{font-size:14px;overflow-wrap:anywhere}
+#financeLab .lab-secondary-action{min-height:38px!important;padding:7px 10px!important;margin:7px 0 0!important;font-size:14px!important;background:#102129!important}
+#financeLab .lab-upcoming .lab-row{padding:8px 0}
+#financeLab .lab-saving-row{display:block;width:100%;text-align:left;margin:5px 0;padding:8px 10px;min-height:0}#financeLab .lab-saving-head{display:flex;justify-content:space-between;gap:12px;align-items:center}#financeLab .lab-saving-head b{flex-shrink:0;font-size:15px}#financeLab .lab-saving-row progress{height:6px;margin-top:6px}
+#financeLab .lab-bottom-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:6px 0}#financeLab .lab-bottom-nav button{padding:9px 6px;font-size:14px;min-height:42px}#financeLab .lab-challenge-link{width:100%;min-height:38px!important;margin:7px 0 0!important;padding:7px 10px!important;font-size:13px!important;color:#b9cbd0!important;background:#0d1c22!important}
+@media(max-width:370px){#financeLab .lab-compact{flex-wrap:wrap}#financeLab .lab-summary b{font-size:18px}#financeLab .lab-quick,#financeLab .lab-bottom-nav{grid-template-columns:1fr}#financeLab .lab-metrics{grid-template-columns:1fr}#financeLab .lab-debt-pair{grid-template-columns:1fr}}
 </style>
 <script>
 (function (root, factory) {
@@ -2843,24 +2848,24 @@ renderAll();
     const dailyActions=el('div',null,'lab-inline');c.append(dailyActions);button(dailyActions,'Как рассчитано',()=>go('analytics','daily'));button(dailyActions,'Дата дохода',()=>go('incomeDate'));
 
     root.append(el('div','Финансовое состояние','lab-section-title'));
-    const debts=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0),grid=el('div',null,'lab-grid');root.append(grid);
+    const debts=(f.payables||[]).reduce((n,d)=>n+d.remainingAmountMinor,0),grid=el('div',null,'lab-grid lab-home-state');root.append(grid);
     for(const[label,value,route]of [['Деньги',s.total,'accounts'],['Накопления',s.allocated,'allocationList'],['Обязательства',api.obligationsDueMinor(f,'9999-12-31'),'obligations']]){const b=button(grid,'',()=>go(route),'lab-summary');b.append(el('span',label),el('b',money(value)));}
-    const debtButton=button(grid,'',()=>go('debts'),'lab-summary');debtButton.append(el('span','Долги'),el('b','Мне '+money(s.receivables)+' · Я '+money(debts)));
+    const debtButton=button(grid,'',()=>go('debts'),'lab-summary');debtButton.append(el('span','Долги'));const debtPair=el('div',null,'lab-debt-pair');for(const[label,value]of [['Мне должны',s.receivables],['Я должен',debts]]){const item=el('div');item.append(el('small',label),el('strong',money(value)));debtPair.append(item);}debtButton.append(debtPair);
 
     root.append(el('div','Быстрые действия','lab-section-title'));
     const actions=el('div',null,'lab-quick');root.append(actions);button(actions,'− Расход',()=>go('transaction','expense'));button(actions,'＋ Доход',()=>go('transaction','income'));button(actions,'↔ Перевод',()=>go('transfer'));
 
     root.append(el('div','Этот месяц','lab-section-title'));
-    const monthName=new Intl.DateTimeFormat('ru-RU',{month:'long'}).format(new Date(today()+'T12:00:00')),month=card(monthName.charAt(0).toUpperCase()+monthName.slice(1)+' · обзор'),elapsed=Math.max(1,Number(today().slice(-2))),pace=Math.round((s.month.paceExpenseMinor||0)/elapsed),monthMain=el('div',null,'lab-month-main');month.classList.add('lab-month');monthMain.append(el('b',money(s.month.expenseMinor)),el('span','расходы месяца'));month.append(monthMain);
-    const metrics=el('div',null,'lab-metrics');for(const[label,value]of [['Темп',money(pace)+'/день'],['Доходы',money(s.month.incomeMinor)],['Баланс',money(s.month.netMinor)]]){const item=el('div',null,'lab-metric');item.append(el('span',label),el('b',value));metrics.append(item);}month.append(metrics);button(month,'Открыть аналитику',()=>go('analytics'),'lab-wide');
+    const monthName=new Intl.DateTimeFormat('ru-RU',{month:'long'}).format(new Date(today()+'T12:00:00')),month=card(monthName.charAt(0).toUpperCase()+monthName.slice(1)+' · обзор'),elapsed=Math.max(1,Number(today().slice(-2))),pace=Math.round((s.month.paceExpenseMinor||0)/elapsed),monthMain=el('div',null,'lab-month-main');month.classList.add('lab-month','lab-home-card');monthMain.append(el('b',money(s.month.expenseMinor)),el('span','расходы месяца'));month.append(monthMain);
+    const metrics=el('div',null,'lab-metrics');for(const[label,value]of [['Темп',money(pace)+'/день'],['Доходы',money(s.month.incomeMinor)],['Баланс',money(s.month.netMinor)]]){const item=el('div',null,'lab-metric');item.append(el('span',label),el('b',value));metrics.append(item);}month.append(metrics);button(month,'Аналитика ›',()=>go('analytics'),'lab-wide lab-secondary-action');
 
     const pending=f.obligations.filter(o=>o.status==='scheduled').sort((a,b)=>(a.dueDate||'9999-12-31').localeCompare(b.dueDate||'9999-12-31'));
-    if(pending.length){root.append(el('div','Ближайшее обязательство','lab-section-title'));const o=pending[0],upcoming=card(o.name);row(upcoming,o.dueDate?dateLabel(o.dueDate):'Срок не указан',money(o.amountMinor));button(upcoming,'Все обязательства',()=>go('obligations'),'lab-wide');}
+    if(pending.length){root.append(el('div','Ближайшее обязательство','lab-section-title'));const o=pending[0],upcoming=card(o.name);upcoming.classList.add('lab-home-card','lab-upcoming');row(upcoming,o.dueDate?dateLabel(o.dueDate):'Срок не указан',money(o.amountMinor));button(upcoming,'Все обязательства ›',()=>go('obligations'),'lab-wide lab-secondary-action');}
 
     const allocations=f.allocations.filter(a=>!a.archived&&!a.system).slice(0,3);
-    if(allocations.length){root.append(el('div','Накопления','lab-section-title'));const savings=card('Активные цели');for(const a of allocations){const value=api.allocationAmountMinor(f,a.id),b=button(savings,'',()=>go('allocation',a.id),'lab-saving-row'),head=el('div',null,'lab-saving-head');head.append(el('span',a.name),el('b',money(value)));b.append(head);if(a.targetAmountMinor){const progress=el('progress');progress.max=a.targetAmountMinor;progress.value=value;b.append(progress);}}button(savings,'Все накопления',()=>go('allocationList'),'lab-wide');}
+    if(allocations.length){root.append(el('div','Накопления','lab-section-title'));const savings=card('Активные цели');savings.classList.add('lab-home-card');for(const a of allocations){const value=api.allocationAmountMinor(f,a.id),b=button(savings,'',()=>go('allocation',a.id),'lab-saving-row'),head=el('div',null,'lab-saving-head');head.append(el('span',a.name),el('b',money(value)));b.append(head);if(a.targetAmountMinor){const progress=el('progress');progress.max=a.targetAmountMinor;progress.value=value;b.append(progress);}}button(savings,'Все накопления ›',()=>go('allocationList'),'lab-wide lab-secondary-action');}
 
-    root.append(el('div','Разделы','lab-section-title'));const links=el('div',null,'lab-bottom-nav');root.append(links);button(links,'Операции',()=>go('history','all'));button(links,'Счета',()=>go('accounts'));button(links,'Челленджи'+(f.challenges.length?' · '+f.challenges.length:''),()=>go('challenges'));
+    root.append(el('div','Разделы','lab-section-title'));const links=el('div',null,'lab-bottom-nav');root.append(links);button(links,'Операции',()=>go('history','all'));button(links,'Счета',()=>go('accounts'));button(root,'Челленджи'+(f.challenges.length?' · '+f.challenges.length:''),()=>go('challenges'),'lab-challenge-link');
     button(root,'Настройки теста',()=>go('settings'),'lab-wide');
   }
   function debts(f){
