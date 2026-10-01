@@ -1072,6 +1072,11 @@ renderAll();
       (sum, transaction) => sum + (Number(transaction.amountMinor) || 0),
       0,
     );
+    // Spending Pace measures ordinary day-to-day spending. Scheduled obligation
+    // payments remain real monthly expenses, but do not distort the daily pace.
+    const paceExpenseMinor = expenseTransactions
+      .filter((transaction) => !transaction.obligationId && transaction.source !== "obligation_payment")
+      .reduce((sum, transaction) => sum + (Number(transaction.amountMinor) || 0), 0);
     const byCategoryMinor = Object.create(null);
     const bySpendTypeMinor = Object.create(null);
     expenseTransactions.forEach((transaction) => {
@@ -1086,6 +1091,7 @@ renderAll();
       month,
       incomeMinor,
       expenseMinor,
+      paceExpenseMinor,
       netMinor: incomeMinor - expenseMinor,
       byCategoryMinor,
       bySpendTypeMinor,
@@ -1385,7 +1391,31 @@ renderAll();
   }
 
   // Optional v16 extension: older test copies without payables remain readable.
-  // Principal is not an expense or an automatic budget reservation.
+  // Loan principal is never income. Its purpose independently decides whether
+  // newly received money is available for everyday spending.
+  const LOAN_UNALLOCATED_ALLOCATION_ID = "allocation-system-loan-unallocated";
+
+  function ensureLoanUnallocatedAllocation(finance, createdAt) {
+    let allocation = finance.allocations.find(a => a.id === LOAN_UNALLOCATED_ALLOCATION_ID);
+    if (!allocation) {
+      allocation = {
+        id: LOAN_UNALLOCATED_ALLOCATION_ID,
+        name: "Заёмные деньги · не распределено",
+        type: "custom",
+        targetAmountMinor: 0,
+        archived: false,
+        system: true,
+        systemKey: "loan_unallocated",
+        createdAt,
+      };
+      finance.allocations.push(allocation);
+    }
+    if (allocation.type !== "custom" || allocation.systemKey !== "loan_unallocated") {
+      throw new Error("Системное назначение заёмных денег повреждено.");
+    }
+    return allocation;
+  }
+
   function addPayable(finance, input) {
     const next = cloneForCommand(finance), data = input || {};
     const name = safeString(data.name), amountMinor = normalizeMinor(data.amountMinor);
@@ -1393,15 +1423,39 @@ renderAll();
     if (!["existing", "received"].includes(data.mode)) throw new Error("Выберите существующий долг или получение денег.");
     if (data.dueDate && !isDateKey(data.dueDate)) throw new Error("Некорректная дата возврата.");
     const createdAt = nowIso(data.createdAt), id = safeString(data.id, makeId("payable"));
+    const receivedPurpose = data.mode === "received" ? safeString(data.purpose, "unallocated") : null;
+    if (data.mode === "received" && !["unallocated", "everyday", "allocation"].includes(receivedPurpose)) {
+      throw new Error("Выберите назначение полученных денег.");
+    }
     next.payables = next.payables || [];
-    next.payables.push({id, name, openingAmountMinor: data.mode === "existing" ? amountMinor : 0,
-      remainingAmountMinor: amountMinor, dueDate: data.dueDate || "", status: "open", createdAt});
+    const debt = {id, name, openingAmountMinor: data.mode === "existing" ? amountMinor : 0,
+      remainingAmountMinor: amountMinor, dueDate: data.dueDate || "", status: "open", createdAt,
+      receivedPurpose, receivedAllocationId: null};
+    next.payables.push(debt);
     if (data.mode === "received") {
       const account = next.accounts.find(a => a.id === data.accountId && !a.archived);
       if (!account) throw new Error("Выберите счёт поступления.");
-      next.transactions.push({id: makeId("tx"), type: "loan_received", payableId: id,
-        accountId: account.id, amountMinor, description: name, date: safeString(data.date, todayKeyFromIso(createdAt)),
-        status: "posted", affectsBalance: true, source: "payable", createdAt});
+      const date = safeString(data.date, todayKeyFromIso(createdAt));
+      requirePostedDate(date, createdAt);
+      let allocation = null;
+      if (receivedPurpose === "allocation") {
+        allocation = next.allocations.find(a => a.id === data.allocationId && !a.archived && !a.system);
+        if (!allocation) throw new Error("Выберите накопление или цель для полученных денег.");
+      } else if (receivedPurpose === "unallocated") {
+        allocation = ensureLoanUnallocatedAllocation(next, createdAt);
+      }
+      const transactionId = makeId("tx");
+      debt.receivedAllocationId = allocation?.id || null;
+      next.transactions.push({id: transactionId, type: "loan_received", payableId: id,
+        accountId: account.id, amountMinor, description: name, date, loanPurpose: receivedPurpose,
+        allocationId: allocation?.id || null, status: "posted", affectsBalance: true, source: "payable", createdAt});
+      if (allocation) {
+        next.allocationEntries.push({id: makeId("alloc-entry"), allocationId: allocation.id,
+          deltaMinor: amountMinor, sourceAccountId: account.id,
+          reason: receivedPurpose === "unallocated" ? "loan_unallocated" : "loan_received_allocation",
+          date, status: "posted", source: "payable", createdAt, payableId: id,
+          transactionId, loanPurpose: receivedPurpose});
+      }
     }
     return finishCommand(next, createdAt);
   }
@@ -1414,12 +1468,33 @@ renderAll();
     const amountMinor = normalizeMinor(data.amountMinor);
     if (amountMinor <= 0 || amountMinor > debt.remainingAmountMinor) throw new Error("Сумма возврата превышает долг или равна нулю.");
     if (accountBalanceMinor(next, account.id) < amountMinor && !account.allowNegative) throw new Error("На выбранном счёте недостаточно денег.");
-    const createdAt = nowIso(data.createdAt);
-    next.transactions.push({id: makeId("tx"), type: "loan_repayment", payableId: debt.id,
-      accountId: account.id, amountMinor, description: debt.name, date: safeString(data.date, todayKeyFromIso(createdAt)),
+    const createdAt = nowIso(data.createdAt), date = safeString(data.date, todayKeyFromIso(createdAt));
+    requirePostedDate(date, createdAt);
+    const transactionId = makeId("tx");
+    next.transactions.push({id: transactionId, type: "loan_repayment", payableId: debt.id,
+      accountId: account.id, amountMinor, description: debt.name, date,
       status: "posted", affectsBalance: true, source: "payable", createdAt});
+    if (debt.receivedPurpose === "unallocated" && debt.receivedAllocationId) {
+      const holdEntries = next.allocationEntries.filter(e => e.status !== "void" &&
+        e.payableId === debt.id && e.loanPurpose === "unallocated");
+      const protectedMinor = holdEntries.reduce((sum, e) => sum + e.deltaMinor, 0);
+      const releaseMinor = Math.min(amountMinor, Math.max(0, protectedMinor));
+      const sourceEntry = holdEntries.find(e => e.deltaMinor > 0);
+      if (releaseMinor > 0 && sourceEntry) {
+        next.allocationEntries.push({id: makeId("alloc-entry"), allocationId: debt.receivedAllocationId,
+          deltaMinor: -releaseMinor, sourceAccountId: sourceEntry.sourceAccountId || null,
+          reason: "loan_unallocated_repayment", date, status: "posted", source: "payable",
+          createdAt, payableId: debt.id, transactionId, loanPurpose: "unallocated"});
+      }
+    }
     debt.remainingAmountMinor -= amountMinor;
     debt.status = debt.remainingAmountMinor === 0 ? "repaid" : "open";
+    const assignedToPaymentAccount = next.allocationEntries
+      .filter(e => e.status !== "void" && e.sourceAccountId === account.id)
+      .reduce((sum, e) => sum + e.deltaMinor, 0);
+    if (!account.allowNegative && assignedToPaymentAccount > accountBalanceMinor(next, account.id)) {
+      throw new Error("Возврат затрагивает назначенные деньги. Сначала освободи соответствующее распределение.");
+    }
     return finishCommand(next, createdAt);
   }
 
@@ -1521,6 +1596,8 @@ renderAll();
         const d=(next.payables||[]).find(d=>d.id===tx.payableId);
         d.remainingAmountMinor+=tx.type==='loan_received'?-tx.amountMinor:tx.amountMinor;
         d.status=d.remainingAmountMinor===0?'repaid':'open';
+        next.allocationEntries.filter(e=>e.status!=='void'&&e.transactionId===tx.id&&e.payableId===tx.payableId)
+          .forEach(e=>{e.status='void';});
       }
     } else throw new Error('Неизвестное действие с операцией.');
     for(const a of next.accounts)if(!a.allowNegative&&accountBalanceMinor(next,a.id)<0&&accountBalanceMinor(next,a.id)<accountBalanceMinor(finance,a.id))throw new Error('Изменение оставит счёт без достаточного остатка.');
@@ -2671,9 +2748,14 @@ renderAll();
   }
   function snapshot(finance, today) {
     const daily = api.calculateDailySafeSpend(finance, {today});
+    const visibleAllocationIds = new Set((finance.allocations || []).filter(a => !a.system).map(a => a.id));
+    const visibleAllocated = (finance.allocationEntries || [])
+      .filter(e => e.status !== 'void' && visibleAllocationIds.has(e.allocationId))
+      .reduce((sum,e) => sum + e.deltaMinor, 0);
     return { total: api.totalCashMinor(finance), accounts: api.accountBalances(finance),
-      onBudget: api.totalCashMinor(finance, {onBudgetOnly:true}), allocated: api.allocatedMinor(finance),
-      free: api.freeMoneyMinor(finance), daily, month: api.monthAnalytics(finance, today.slice(0,7), {today}),
+      onBudget: api.totalCashMinor(finance, {onBudgetOnly:true}), allocated: visibleAllocated,
+      protected: api.allocatedMinor(finance), free: api.freeMoneyMinor(finance), daily,
+      month: api.monthAnalytics(finance, today.slice(0,7), {today}),
       receivables: finance.receivables.reduce((sum,r)=>sum+r.remainingAmountMinor,0) };
   }
   return Object.freeze({create, snapshot});
@@ -2804,7 +2886,7 @@ renderAll();
   function allocationList(f){
     back();root.append(el('h3','Накопления'));note(root,'Назначение уже существующих денег. Счета остаются прежними.');
     button(root,'＋ Новое накопление',()=>go('newAllocation'),'lab-wide');
-    for(const a of f.allocations.filter(a=>!a.archived)){const b=button(root,'',()=>go('allocation',a.id),'lab-account');b.append(el('span',a.name),el('strong',money(api.allocationAmountMinor(f,a.id))+(a.targetAmountMinor?' из '+money(a.targetAmountMinor):'')));}
+    for(const a of f.allocations.filter(a=>!a.archived&&!a.system)){const b=button(root,'',()=>go('allocation',a.id),'lab-account');b.append(el('span',a.name),el('strong',money(api.allocationAmountMinor(f,a.id))+(a.targetAmountMinor?' из '+money(a.targetAmountMinor):'')));}
   }
   function newAllocation(f){back('allocationList');
     const c=card('Создать');const fm=form(c,'Создать назначение',()=>dispatch('addAllocation',{name:name.value,type:type.value,targetAmountMinor:target.value.trim()?minor(target):0},['allocationList']));const options=f.allocations.some(a=>a.type==='buffer'&&!a.archived)?[['goal','Цель']]:[['buffer','Подушка'],['goal','Цель']];const type=select(fm.node,'Назначение',options),name=field(fm.node,'Название'),target=amount(fm.node,'Сколько нужно накопить, ₽ · необязательно');fm.finish();
@@ -2833,16 +2915,42 @@ renderAll();
     const draw=(p,r)=>compact(p,r.name,r.remainingAmountMinor,r.status==='open'?dateLabel(r.dueDate):'Возвращён',()=>go('receivable',r.id));
     f.receivables.filter(r=>r.status==='open').forEach(r=>draw(root,r));finished(root,'Возвращённые',f.receivables.filter(r=>r.status!=='open'),draw);
   }
-  function receivable(f,id){back('receivables');const r=f.receivables.find(r=>r.id===id);if(!r)return go('receivables');const c=card(r.name);row(c,'Осталось вернуть',money(r.remainingAmountMinor));if(r.status!=='open'){note(c,'Долг возвращён.');return;}const fm=form(c,'Получить возврат',()=>dispatch('receiveReceivable',{receivableId:id,accountId:account.value,amountMinor:minor(sum)},['receivables']));const account=accountSelect(fm.node,f,'Куда поступили деньги'),sum=amount(fm.node,'Сумма возврата, ₽',String(r.remainingAmountMinor/100));note(fm.node,'Можно вернуть часть долга. Возврат увеличивает счёт, но не доход месяца.');fm.finish();}
+  function receivable(f,id){
+    back('receivables');const r=f.receivables.find(r=>r.id===id);if(!r)return go('receivables');
+    const c=card(r.name);row(c,'Осталось вернуть',money(r.remainingAmountMinor));
+    if(r.status==='open'){
+      const fm=form(c,'Получить возврат',()=>dispatch('receiveReceivable',{receivableId:id,accountId:account.value,amountMinor:minor(sum)},['receivables']));
+      const account=accountSelect(fm.node,f,'Куда поступили деньги'),sum=amount(fm.node,'Сумма возврата, ₽',String(r.remainingAmountMinor/100));
+      note(fm.node,'Можно вернуть часть долга. Возврат увеличивает счёт, но не доход месяца.');fm.finish();
+    }else note(c,'Долг возвращён.');
+    const returns=f.transactions.filter(t=>t.type==='receivable_return'&&t.receivableId===id&&t.status!=='void');
+    const history=card('История возвратов');
+    if(!returns.length){note(history,'Возвратов пока нет.');return;}
+    const live=[...returns].filter(t=>t.affectsBalance!==false).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+    let remaining=r.openingRemainingAmountMinor;const remainingAfter=new Map();
+    for(const t of live){remaining=Math.max(0,remaining-t.amountMinor);remainingAfter.set(t.id,remaining);}
+    const ordered=[...returns].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    for(const t of ordered){const item=el('article',null,'lab-history'),acc=f.accounts.find(a=>a.id===t.accountId);row(item,t.date?dateLabel(t.date):'Дата неизвестна','+'+money(t.amountMinor));const details=[acc?accountName(f,acc):'Счёт не указан'];if(t.affectsBalance===false)details.push('История до стартового остатка');else details.push('Осталось '+money(remainingAfter.get(t.id)));note(item,details.join(' · '));history.append(item);}
+  }
   function newReceivable(f){back('receivables');const c=card('Записать существующий долг');const fm=form(c,'Добавить долг',()=>dispatch('addReceivable',{name:name.value,amountMinor:minor(sum),dueDate:due.value},['receivables'])),name=field(fm.node,'Кто / описание'),sum=amount(fm.node,'Сумма, ₽'),due=field(fm.node,'Срок · необязательно','date');note(fm.node,'Запись не списывает деньги со счёта. Возврат увеличивает счёт, но не доход месяца.');fm.finish();}
   function payables(f){back();root.append(el('h3','Я должен'));button(root,'＋ Добавить мой долг',()=>go('newPayable'),'lab-wide');note(root,'Остаток долга показан отдельно и не вычитается из «Можно сегодня». Деньги уменьшаются при возврате.');const draw=(p,d)=>compact(p,d.name,d.remainingAmountMinor,d.status==='open'?dateLabel(d.dueDate):'Погашен',()=>go('payable',d.id));const ds=f.payables||[];ds.filter(d=>d.status==='open').forEach(d=>draw(root,d));finished(root,'Погашенные',ds.filter(d=>d.status!=='open'),draw);}
-  function newPayable(f){back('payables');const c=card('Мой долг');const fm=form(c,'Сохранить долг',()=>dispatch('addPayable',{mode:mode.value,name:name.value,amountMinor:minor(sum),accountId:account.value,dueDate:due.value},['payables']));const mode=select(fm.node,'Что произошло',[['existing','Записываю существующий долг'],['received','Сейчас получил деньги в долг']]),name=field(fm.node,'Кому должен'),sum=amount(fm.node,'Сумма, ₽'),account=accountSelect(fm.node,f,'Куда поступили деньги'),due=field(fm.node,'Срок · необязательно','date');const help=el('p',null,'lab-note');fm.node.append(help);const change=()=>{account.parentElement.hidden=mode.value==='existing';help.textContent=mode.value==='existing'?'Запись не меняет остатки и дневной лимит.':'Поступление увеличит счёт и появится в истории как «Получено в долг». Доход месяца не изменится. Если счёт участвует в повседневном расчёте, увеличится и «Можно сегодня».';};mode.onchange=change;change();fm.finish();}
-  function payable(f,id){back('payables');const d=(f.payables||[]).find(d=>d.id===id);if(!d)return go('payables');const c=card(d.name);row(c,'Я должен',money(d.remainingAmountMinor));note(c,dateLabel(d.dueDate));if(d.status!=='open'){note(c,'Долг погашен.');return;}const fm=form(c,'Вернуть долг',()=>dispatch('repayPayable',{payableId:id,accountId:account.value,amountMinor:minor(sum)},['payables'])),account=accountSelect(fm.node,f,'Откуда возвращаю'),sum=amount(fm.node,'Сумма возврата, ₽',String(d.remainingAmountMinor/100));note(fm.node,'Полный или частичный возврат уменьшит счёт и долг. Проценты, если есть, запишите отдельно как расход.');fm.finish();}
+  function newPayable(f){
+    back('payables');const c=card('Мой долг');
+    const availableAllocations=f.allocations.filter(a=>!a.archived&&!a.system);
+    const fm=form(c,'Сохранить долг',()=>dispatch('addPayable',{mode:mode.value,name:name.value,amountMinor:minor(sum),accountId:account.value,dueDate:due.value,purpose:purpose.value,allocationId:purpose.value==='allocation'?target.value:null},['payables']));
+    const mode=select(fm.node,'Что произошло',[['existing','Записываю существующий долг'],['received','Сейчас получил деньги в долг']]),name=field(fm.node,'Кому должен'),sum=amount(fm.node,'Сумма, ₽'),account=accountSelect(fm.node,f,'Куда поступили деньги');
+    const purposeOptions=[['unallocated','Не распределено'],['everyday','Повседневные расходы']];if(availableAllocations.length)purposeOptions.push(['allocation','Накопление / цель']);
+    const purpose=select(fm.node,'Назначение денег',purposeOptions,'unallocated'),target=select(fm.node,'Куда назначить',availableAllocations.map(a=>[a.id,a.name])),due=field(fm.node,'Срок · необязательно','date');
+    const help=el('p',null,'lab-note');fm.node.append(help);
+    const change=()=>{const received=mode.value==='received';account.parentElement.hidden=!received;purpose.parentElement.hidden=!received;target.parentElement.hidden=!received||purpose.value!=='allocation';if(!received)help.textContent='Запись существующего долга не меняет остатки и «Можно сегодня».';else if(purpose.value==='everyday')help.textContent='Поступление увеличит счёт и не станет доходом. Если счёт участвует в повседневном расчёте, деньги войдут в «Можно сегодня».';else if(purpose.value==='allocation')help.textContent='Поступление увеличит счёт и будет сразу назначено выбранному накоплению или цели. В «Можно сегодня» эта сумма не войдёт.';else help.textContent='Поступление увеличит счёт, но останется защищённым как нераспределённое и не войдёт в «Можно сегодня».';};
+    mode.onchange=change;purpose.onchange=change;change();fm.finish();
+  }
+  function payable(f,id){back('payables');const d=(f.payables||[]).find(d=>d.id===id);if(!d)return go('payables');const c=card(d.name);row(c,'Я должен',money(d.remainingAmountMinor));note(c,dateLabel(d.dueDate));if(d.receivedPurpose){const labels={unallocated:'Не распределено · защищено',everyday:'Повседневные расходы',allocation:'Накопление / цель'};note(c,'Назначение полученных денег: '+(labels[d.receivedPurpose]||d.receivedPurpose));}if(d.status!=='open'){note(c,'Долг погашен.');return;}const fm=form(c,'Вернуть долг',()=>dispatch('repayPayable',{payableId:id,accountId:account.value,amountMinor:minor(sum)},['payables'])),account=accountSelect(fm.node,f,'Откуда возвращаю'),sum=amount(fm.node,'Сумма возврата, ₽',String(d.remainingAmountMinor/100));note(fm.node,'Полный или частичный возврат уменьшит счёт и долг. Проценты, если есть, запишите отдельно как расход.');fm.finish();}
   function reminders(f){back();root.append(el('h3','Напоминания'));const items=api.paymentReminders(f,today());if(!items.length)note(root,'На ближайшие три дня напоминаний нет.');for(const a of items)compact(root,a.name,a.amountMinor,({overdue:'Просрочено',today:'Сегодня',soon:'Скоро'})[a.urgency]+' · '+dateLabel(a.dueDate)+' · '+({obligation:'Платёж',payable:'Я должен',receivable:'Мне должны'})[a.route],()=>go(a.route,a.id));}
   function incomeDate(f){back();const c=card('Дата следующего дохода'),fm=form(c,'Сохранить дату',()=>dispatch('setNextIncomeDate',{date:date.value},['home'])),date=field(fm.node,'Когда ожидается доход','date',f.settings.nextIncomeDate||'');fm.finish();
   }
   function analytics(f,mode){back();const s=service.snapshot(f,today());if(mode==='daily'){const c=card('Как рассчитано «Можно сегодня»');row(c,'Все счета',money(s.total));row(c,'Из них участвуют в расчёте',money(s.onBudget));row(c,'Защищено в этом пуле',money(api.allocatedMinor(f,{onBudgetOnly:true})));row(c,'Свободно до обязательств',money(s.free));if(s.daily.obligationsMinor!=null)row(c,'Платежи до следующего дохода',money(s.daily.obligationsMinor));if(s.daily.days)row(c,'Дней до дохода',String(s.daily.days));row(c,'В день',s.daily.valueMinor==null?'Нужно уточнить данные':money(s.daily.valueMinor));note(c,'Из повседневных денег вычитаются назначения и предстоящие обязательства. Остаток делится на дни до дохода; отрицательный результат показывается как 0 ₽.');button(c,'Изменить дату дохода',()=>go('settings'));return;}
-    const c=card(new Date(today()+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}));row(c,'Доходы',money(s.month.incomeMinor));row(c,'Расходы',money(s.month.expenseMinor));row(c,'Баланс месяца',money(s.month.netMinor));note(c,'Доходы минус расходы за месяц. Это не остаток на счетах.');row(c,'Средний расход в день',money(Math.round(s.month.expenseMinor/Number(today().slice(-2)))));note(c,'Среднее за прошедшие календарные дни месяца.');for(const[id,sum]of Object.entries(s.month.byCategoryMinor))row(c,f.categories.find(x=>x.id===id)?.name||id,money(sum));const character=card('Характер расходов');for(const[key,sum]of Object.entries(s.month.bySpendTypeMinor))row(character,spendNames[key]||key,money(sum));const debt=card('Движение долгов');for(const[type,label]of [['loan_received','Получено в долг'],['loan_repayment','Возвращено мной'],['receivable_return','Мне вернули']])row(debt,label,money(f.transactions.filter(t=>t.type===type&&t.status!=='void'&&t.date?.startsWith(today().slice(0,7))&&t.date<=today()).reduce((n,t)=>n+t.amountMinor,0)));note(debt,'Показано отдельно от доходов и расходов месяца.');button(debt,'История операций',()=>go('history','all'),'lab-wide');
+    const c=card(new Date(today()+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}));row(c,'Доходы',money(s.month.incomeMinor));row(c,'Расходы',money(s.month.expenseMinor));row(c,'Баланс месяца',money(s.month.netMinor));note(c,'Доходы минус расходы за месяц. Это не остаток на счетах.');row(c,'Темп расходов',money(Math.round(s.month.paceExpenseMinor/Number(today().slice(-2)))));note(c,'Среднее обычных расходов за прошедшие календарные дни. Оплата обязательств и движение основного долга сюда не входят.');for(const[id,sum]of Object.entries(s.month.byCategoryMinor))row(c,f.categories.find(x=>x.id===id)?.name||id,money(sum));const character=card('Характер расходов');for(const[key,sum]of Object.entries(s.month.bySpendTypeMinor))row(character,spendNames[key]||key,money(sum));const debt=card('Движение долгов');for(const[type,label]of [['loan_received','Получено в долг'],['loan_repayment','Возвращено мной'],['receivable_return','Мне вернули']])row(debt,label,money(f.transactions.filter(t=>t.type===type&&t.status!=='void'&&t.date?.startsWith(today().slice(0,7))&&t.date<=today()).reduce((n,t)=>n+t.amountMinor,0)));note(debt,'Показано отдельно от доходов и расходов месяца.');button(debt,'История операций',()=>go('history','all'),'lab-wide');
   }
   function challenges(f){back();root.append(el('h3','Челленджи'));const create=el('details');create.append(el('summary','＋ Новый челлендж'));root.append(create);const fm=form(create,'Создать челлендж',()=>dispatch('addChallenge',{name:name.value,type:type.value,startDate:start.value,endDate:end.value,amountLimitMinor:type.value==='budget'?minor(limit):0,categoryId:category.value},['challenges'])),name=field(fm.node,'Название'),type=select(fm.node,'Правило',[['budget','Расходы в пределах лимита'],['category_free','Без расходов в категории']]),start=field(fm.node,'С','date',today()),end=field(fm.node,'По','date',today()),limit=amount(fm.node,'Лимит, ₽'),category=select(fm.node,'Категория',f.categories.filter(c=>c.direction==='expense').map(c=>[c.id,c.name]));const change=()=>{limit.parentElement.hidden=type.value!=='budget';category.parentElement.hidden=type.value!=='category_free';};type.onchange=change;change();fm.finish();note(root,'Прогресс считается по расходам. Переводы, накопления и движение основного долга его не меняют.');for(const c of f.challenges||[]){const box=card(c.name||'Челлендж');note(box,dateLabel(c.startDate)+' — '+dateLabel(c.endDate));const p=api.challengeProgress(f,c,today());note(box,({active:'В процессе',upcoming:'Начнётся позже',exceeded:'Условие нарушено',completed:'Выполнен',cancelled:'Отменён',unsupported:'Сохранено исходное правило; автоматическая проверка пока недоступна'})[p.status]);if(p.expenseMinor!==undefined){row(box,'Потрачено',money(p.expenseMinor));if(c.type==='budget')row(box,'Лимит',money(p.limitMinor));}}}
   function settings(f){
