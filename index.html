@@ -383,14 +383,36 @@ button{cursor:pointer}
 const STORE="kstm-data-v2",OLD_PREFIX="kstm-task-",HISTORY_MIGRATION_VERSION=1;
 const historySeed=[{id:"history-yoga-13",date:"2026-09-13",name:"Йога",type:"training",done:true},{id:"history-ai-13",date:"2026-09-13",name:"AI / ChatGPT",type:"ai",done:true},{id:"history-highlights-13",date:"2026-09-13",name:"Instagram Highlights — Бокс",type:"general",done:true},{id:"history-sydney-14",date:"2026-09-14",name:"Система Сидни",type:"training",done:true},{id:"history-retro-14",date:"2026-09-14",name:"Instagram — ретро-история",type:"general",done:true},{id:"history-sydney-15",date:"2026-09-15",name:"Система Сидни",type:"training",done:true},{id:"history-chatgpt-15",date:"2026-09-15",name:"ChatGPT — работа с проектами",type:"ai",done:true},{id:"history-chatgpt-16",date:"2026-09-16",name:"ChatGPT — работа с проектами",type:"ai",done:true},{id:"history-yoga-16",date:"2026-09-16",name:"Йога",type:"training",done:true},{id:"history-boxing-17",date:"2026-09-17",name:"Бокс",type:"training",done:false},{id:"history-chatgpt-17",date:"2026-09-17",name:"ChatGPT",type:"ai",done:false},{id:"history-chatgpt-18",date:"2026-09-18",name:"ChatGPT",type:"ai",done:false},{id:"history-fasting-18",date:"2026-09-18",name:"Голодание",type:"fasting",done:true},{id:"history-boxing-19",date:"2026-09-19",name:"Бокс",type:"training",done:true},{id:"history-chatgpt-19",date:"2026-09-19",name:"Обучение ChatGPT",type:"ai",done:true},{id:"history-fasting-19",date:"2026-09-19",name:"Голодание",type:"fasting",done:true},{id:"history-sauna-20",date:"2026-09-20",name:"Баня",type:"general",done:true},{id:"history-sydney-20",date:"2026-09-20",name:"Система Сидни",type:"training",done:true},{id:"history-ai-20",date:"2026-09-20",name:"Обучение AI",type:"ai",done:true}];
 function sameHistoryEvent(a,b){return a.date===b.date&&a.type===b.type&&String(a.name).trim().toLowerCase()===String(b.name).trim().toLowerCase()}
-function applyHistoryMigration(data){if((data.historyMigrationVersion||0)>=HISTORY_MIGRATION_VERSION)return data;historySeed.forEach(item=>{if(!data.events.some(e=>sameHistoryEvent(e,item)))data.events.push({...item,createdAt:new Date().toISOString()})});data.historyMigrationVersion=HISTORY_MIGRATION_VERSION;localStorage.setItem(STORE,JSON.stringify(data));return data}
+function applyHistoryMigration(data){if((data.historyMigrationVersion||0)>=HISTORY_MIGRATION_VERSION)return data;historySeed.forEach(item=>{if(!data.events.some(e=>sameHistoryEvent(e,item)))data.events.push({...item,createdAt:new Date().toISOString()})});data.historyMigrationVersion=HISTORY_MIGRATION_VERSION;return data}
 const seed=[{id:"sydney-21",date:"2026-09-21",name:"Система Сидни",type:"training",defaultDone:true},{id:"ai-21",date:"2026-09-21",name:"Обучение AI",type:"ai",defaultDone:true},{id:"boxing-22",date:"2026-09-22",name:"Бокс",type:"training",defaultDone:false},{id:"ai-22",date:"2026-09-22",name:"Обучение AI",type:"ai",defaultDone:false},{id:"fasting-23",date:"2026-09-23",name:"Голодание",type:"fasting",defaultDone:false}];
 function localDateKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function parseKey(key){const[y,m,d]=key.split("-").map(Number);return new Date(y,m-1,d)}
 function fmtDate(d,opts={day:"numeric",month:"long",weekday:"long"}){return new Intl.DateTimeFormat("ru-RU",opts).format(d)}
 function typeLabel(t){return({training:"тренировка",ai:"AI",fasting:"голодание",general:"другое"})[t]||"другое"}
 function uid(){return window.crypto&&typeof window.crypto.randomUUID==="function"?window.crypto.randomUUID():"k-"+Date.now()+"-"+Math.random().toString(16).slice(2)}
+function validateLegacyAppData(obj){
+if(!obj||typeof obj!=="object"||Array.isArray(obj)||!Array.isArray(obj.events))throw new Error("Некорректная структура сохранения KSTM.");
+if(obj.format==="KSTM_FINANCE_TEST"||Number(obj.finance?.schemaVersion??obj.finance?.version)>=16||obj.finance?.version==="1.0")throw new Error("Finance 1.0 нельзя загружать через старый учёт KSTM. Используйте отдельный тест Finance.");
+const lists=(owner,keys)=>{for(const key of keys)if(owner[key]!==undefined&&(!Array.isArray(owner[key])||owner[key].some(x=>!x||typeof x!=="object"||Array.isArray(x))))throw new Error("Некорректный список: "+key);};
+lists(obj,["events","stateMetrics","goals","habits","notifications"]);
+if(obj.events.some(x=>typeof x.id!=="string"||typeof x.name!=="string"||typeof x.date!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(x.date)))throw new Error("Некорректная запись календаря KSTM.");
+const named=(items,label)=>{if((items||[]).some(x=>!x.id||!x.name))throw new Error("Некорректная запись: "+label);};
+const amounts=(record,keys,negative=false)=>{for(const key of keys)if(record[key]!=null&&(!["number","string"].includes(typeof record[key])||!String(record[key]).trim()||!Number.isFinite(Number(record[key]))||(!negative&&Number(record[key])<0)))throw new Error("Некорректная сумма Finance: "+key);};
+named(obj.stateMetrics,"stateMetrics");
+if(obj.finance!==undefined){const f=obj.finance;if(!f||typeof f!=="object"||Array.isArray(f))throw new Error("Некорректный раздел Finance.");lists(f,["accounts","transactions","obligations","reserves","goals","assets","receivables","banks","transfers","challenges","notifications","reconciliations","locationTransfers"]);for(const key of ["banks","reserves","goals","assets","receivables","obligations"])named(f[key],key);for(const bank of f.banks||[]){lists(bank,["accounts"]);named(bank.accounts,"bank.accounts");}if((f.challenges||[]).some(x=>!x.id||!x.type||!x.startDate||!x.endDate))throw new Error("Некорректный челлендж Finance.");if((f.locationTransfers||[]).some(x=>!x.id||!x.from||!x.to))throw new Error("Некорректный перевод Finance.");if(f.customCategories!==undefined){if(!f.customCategories||typeof f.customCategories!=="object"||Array.isArray(f.customCategories))throw new Error("Некорректные категории Finance.");lists(f.customCategories,["expense","income"]);named(f.customCategories.expense,"expense categories");named(f.customCategories.income,"income categories");}}
+if(obj.finance){const f=obj.finance;for(const a of f.accounts||[])amounts(a,["balance"],true);for(const bank of f.banks||[])for(const a of bank.accounts||[])amounts(a,["balance"]);if(f.cashAccount!==undefined){if(!f.cashAccount||typeof f.cashAccount!=="object"||Array.isArray(f.cashAccount))throw new Error("Некорректные наличные Finance.");amounts(f.cashAccount,["balance"]);}for(const [key,fields]of [["transactions",["amount"]],["obligations",["amount"]],["reserves",["balance","targetAmount"]],["goals",["savedAmount","targetAmount"]],["assets",["value"]],["receivables",["amount","remainingAmount"]],["locationTransfers",["amount"]],["challenges",["amountLimit"]]])for(const r of f[key]||[])amounts(r,fields);}
+return obj;
+}
+function showDataLoadFailure(error,raw){
+console.error("KSTM: загрузка остановлена; исходное сохранение не заменено.",error);
+if(typeof document==="undefined")return;
+const dialog=document.createElement("dialog"),title=document.createElement("h2"),message=document.createElement("p");
+dialog.setAttribute("aria-label","Ошибка загрузки данных KSTM");title.textContent="Не удалось открыть сохранение";message.textContent="Загрузка остановлена. Исходные данные не заменены. "+(error.message||String(error));dialog.append(title,message);
+if(typeof raw==="string"){const download=document.createElement("button");download.type="button";download.textContent="Скачать исходное сохранение";download.onclick=()=>{const url=URL.createObjectURL(new Blob([raw],{type:"application/json"})),link=document.createElement("a");link.href=url;link.download="KSTM-recovery-original.json";document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};dialog.append(download);}
+const reload=document.createElement("button");reload.type="button";reload.textContent="Повторить загрузку";reload.onclick=()=>location.reload();dialog.append(reload);dialog.addEventListener("cancel",event=>event.preventDefault());document.body.append(dialog);dialog.showModal();
+}
 function ensureStateData(obj){
+validateLegacyAppData(obj);
 if(!obj.state||typeof obj.state!=="object"||Array.isArray(obj.state))obj.state={};
 const defaults=[{id:"energy",name:"Энергия",direction:"positive",builtin:true},{id:"mood",name:"Настроение",direction:"positive",builtin:true},{id:"focus",name:"Фокус",direction:"positive",builtin:true}];
 if(!Array.isArray(obj.stateMetrics))obj.stateMetrics=[];
@@ -403,7 +425,14 @@ const f=obj.finance;f.version=13;f.schemaVersion=13;if(!Array.isArray(f.accounts
 f.version=14;f.schemaVersion=14;if(!f.customCategories||typeof f.customCategories!=="object"||Array.isArray(f.customCategories))f.customCategories={expense:[],income:[]};["expense","income"].forEach(kind=>{if(!Array.isArray(f.customCategories[kind]))f.customCategories[kind]=[];f.customCategories[kind]=f.customCategories[kind].filter(c=>c&&c.id&&c.name).map(c=>({id:String(c.id),name:String(c.name).trim()}))});
 f.version=15;f.schemaVersion=15;if(!f.cashAccount||typeof f.cashAccount!=="object"||Array.isArray(f.cashAccount))f.cashAccount={id:"cash",name:"Наличные",type:"cash",balance:0,currency:"RUB",source:"manual"};f.cashAccount.id="cash";f.cashAccount.name="Наличные";f.cashAccount.type="cash";f.cashAccount.balance=Math.max(0,Number(f.cashAccount.balance)||0);if(!Array.isArray(f.locationTransfers))f.locationTransfers=[];f.locationTransfers=f.locationTransfers.filter(x=>x&&x.id&&x.from&&x.to).map(x=>({...x,amount:Math.max(0,Number(x.amount)||0),date:typeof x.date==="string"?x.date:"",createdAt:x.createdAt||new Date().toISOString()}));f.bankSettings.mode="linked_optional";f.transactions.forEach(tx=>{if(typeof tx.locationId!=="string")tx.locationId=""});
 return obj}
-function loadData(){try{const saved=JSON.parse(localStorage.getItem(STORE));if(saved&&Array.isArray(saved.events))return ensureStateData(applyHistoryMigration(saved))}catch(e){}const events=seed.map(x=>{const old=localStorage.getItem(OLD_PREFIX+x.id);return{id:x.id,date:x.date,name:x.name,type:x.type,done:old===null?x.defaultDone:old==="true",createdAt:new Date().toISOString()}});const data={version:2,events};localStorage.setItem(STORE,JSON.stringify(data));return ensureStateData(applyHistoryMigration(data))}
+function loadData(){
+let raw;
+try{
+raw=localStorage.getItem(STORE);
+if(raw!==null){const saved=JSON.parse(raw);validateLegacyAppData(saved);const needsHistory=(saved.historyMigrationVersion||0)<HISTORY_MIGRATION_VERSION;const normalized=validateLegacyAppData(applyHistoryMigration(ensureStateData(saved)));if(needsHistory)localStorage.setItem(STORE,JSON.stringify(normalized));return normalized;}
+const events=seed.map(x=>{const old=localStorage.getItem(OLD_PREFIX+x.id);return{id:x.id,date:x.date,name:x.name,type:x.type,done:old===null?x.defaultDone:old==="true",createdAt:new Date().toISOString()}}),initial=validateLegacyAppData(applyHistoryMigration(ensureStateData({version:2,events})));localStorage.setItem(STORE,JSON.stringify(initial));return initial;
+}catch(error){showDataLoadFailure(error,raw);throw error;}
+}
 let data=loadData();function save(){localStorage.setItem(STORE,JSON.stringify(data))}
 const todayKey=localDateKey();let statePeriod="morning";
 function ensureTodayState(){const st=(data.state[todayKey]&&typeof data.state[todayKey]==="object"&&!Array.isArray(data.state[todayKey]))?data.state[todayKey]:(data.state[todayKey]={});if(!st.periods||typeof st.periods!=="object"||Array.isArray(st.periods)){st.periods={morning:{},day:{},evening:{}};["energy","mood","focus"].forEach(id=>{if(st[id]!=null)st.periods.morning[id]=Number(st[id])})}["morning","day","evening"].forEach(p=>{if(!st.periods[p]||typeof st.periods[p]!=="object"||Array.isArray(st.periods[p]))st.periods[p]={}});return st}
@@ -2430,13 +2459,17 @@ renderAll();
       if (!["scheduled", "paid", "cancelled"].includes(obligation.status)) errors.push("Неизвестный статус обязательства");
       if (!isDateKey(obligation.dueDate)) (obligation.legacyRecord ? warnings : errors).push(`Обязательство ${obligation.id}: срок неизвестен`);
       if (!categoryIds.has(obligation.categoryId) || !SPEND_TYPES.has(obligation.spendType)) errors.push("Категория или характер обязательства не найдены");
-      if (obligation.paymentTransactionId && !transactionIds.has(obligation.paymentTransactionId)) {
-        warnings.push(`Обязательство ${obligation.id}: операция оплаты не найдена`);
+      const payments = finance.transactions.filter(t => t.obligationId === obligation.id && t.status !== "void");
+      const tx = finance.transactions.find(t => t.id === obligation.paymentTransactionId);
+      // Imported history may be balance-neutral, but a paid record still needs
+      // an actual, consistent payment link. Missing links are never repaired here.
+      if (obligation.status === "paid" && !tx) {
+        errors.push(`Обязательство ${obligation.id}: операция оплаты не найдена`);
       }
-      if (obligation.paymentTransactionId && transactionIds.has(obligation.paymentTransactionId)) {
-        const tx = finance.transactions.find(t => t.id === obligation.paymentTransactionId);
-        if (tx.type !== "expense" || tx.amountMinor !== obligation.amountMinor || tx.obligationId !== obligation.id || obligation.status !== "paid") errors.push("Связь оплаты обязательства противоречива");
-      }
+      if (obligation.paymentTransactionId && obligation.status !== "paid") errors.push("У неоплаченного обязательства есть ссылка оплаты");
+      if (tx && (tx.status !== "posted" || tx.type !== "expense" || tx.amountMinor !== obligation.amountMinor || tx.obligationId !== obligation.id || obligation.status !== "paid" || (!tx.affectsBalance && !obligation.legacyRecord))) errors.push("Связь оплаты обязательства противоречива");
+      if (payments.length > 1) errors.push("Повторная оплата одного обязательства");
+      if (payments.some(t => t.affectsBalance && (t.id !== obligation.paymentTransactionId || t.type !== "expense" || t.source !== "obligation_payment" || obligation.status !== "paid"))) errors.push("Несогласованная или повторная оплата обязательства");
     });
     finance.receivables.forEach(r => {
       const values = [r.originalAmountMinor, r.remainingAmountMinor, r.openingRemainingAmountMinor];
@@ -2453,6 +2486,7 @@ renderAll();
       if (remaining !== d.remainingAmountMinor) errors.push("Остаток моего долга расходится с операциями");
       if (d.status !== (remaining === 0 ? "repaid" : "open")) errors.push("Некорректный статус моего долга");
     });
+    validateLoanProtection(finance, errors);
     const onBudget = totalCashMinor(finance, { onBudgetOnly: true });
     const allocated = allocatedMinor(finance, { onBudgetOnly: true });
     for (const value of [totalCashMinor(finance), onBudget, allocated, allocatedMinor(finance), freeMoneyMinor(finance)]) if (!Number.isSafeInteger(value)) errors.push("Итоговые суммы вне допустимой точности");
@@ -2464,6 +2498,32 @@ renderAll();
       if (assigned > 0 && assigned > accountBalanceMinor(finance, account.id)) warnings.push(`Распределение превышает остаток счёта ${account.id}; требуется сверка назначения`);
     }
     return { valid: errors.length === 0, errors, warnings };
+  }
+
+  function validateLoanProtection(finance, errors) {
+    const systemId = LOAN_UNALLOCATED_ALLOCATION_ID;
+    const system = finance.allocations.find(a => a.id === systemId);
+    if (system && (system.type !== "custom" || system.system !== true || system.systemKey !== "loan_unallocated" || system.archived)) errors.push("Системная защита нераспределённого займа повреждена");
+    for (const debt of finance.payables || []) {
+      const receipts = finance.transactions.filter(t => t.payableId === debt.id && t.type === "loan_received");
+      if (debt.receivedPurpose !== "unallocated" && !receipts.some(t => t.loanPurpose === "unallocated" || t.allocationId === systemId)) continue;
+      const receipt = receipts[0];
+      if (debt.receivedPurpose !== "unallocated" || debt.receivedAllocationId !== systemId || debt.openingAmountMinor !== 0 || receipts.length !== 1 || receipt?.loanPurpose !== "unallocated" || receipt?.allocationId !== systemId || !system) errors.push("Нарушена связь займа и защитного назначения");
+      const flows = finance.transactions.filter(t => t.payableId === debt.id && ["loan_received", "loan_repayment"].includes(t.type));
+      for (const tx of flows) {
+        const entries = finance.allocationEntries.filter(e => e.payableId === debt.id && e.transactionId === tx.id);
+        const entry = entries[0], expected = tx.type === "loan_received" ? tx.amountMinor : -tx.amountMinor;
+        if (entries.length !== 1 || entry?.allocationId !== systemId || entry?.deltaMinor !== expected || entry?.sourceAccountId !== receipt?.accountId || entry?.loanPurpose !== "unallocated" || entry?.source !== "payable" || entry?.status !== tx.status) errors.push("Движение займа расходится с защитным распределением");
+      }
+      const protectedMinor = finance.allocationEntries.filter(e => e.payableId === debt.id && e.allocationId === systemId && e.status !== "void").reduce((n,e) => n + e.deltaMinor, 0);
+      if (protectedMinor !== debt.remainingAmountMinor) errors.push("Защита нераспределённого займа расходится с остатком долга");
+    }
+    for (const entry of finance.allocationEntries) {
+      if (entry.allocationId !== systemId && entry.loanPurpose !== "unallocated") continue;
+      const debt = (finance.payables || []).find(d => d.id === entry.payableId);
+      const tx = finance.transactions.find(t => t.id === entry.transactionId);
+      if (!debt || debt.receivedPurpose !== "unallocated" || !tx || tx.payableId !== debt.id || !["loan_received", "loan_repayment"].includes(tx.type) || entry.allocationId !== systemId) errors.push("Защитное распределение ссылается на отсутствующий или несогласованный заём");
+    }
   }
 
   function commitFinanceMigration(appState, migratedFinance, preview) {
@@ -2744,6 +2804,7 @@ renderAll();
     const validation = api.validateFinanceV16(initial);
     if (!validation.valid) throw new Error(validation.errors.join('; '));
     let state = copy(initial);
+    if (state.challenges === undefined) state.challenges = [];
     return Object.freeze({
       getState: () => copy(state),
       dispatch(action, input) {
